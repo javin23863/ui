@@ -553,11 +553,23 @@ Two cards side by side. From `05`, the left card is ~600px and the right ~340px 
 - Rotated y-axis title `Weekday P&L`
 - x ticks are weekday names
 - Same legend
+- **Its own `All` / `Long` / `Short` row, centred below the legend.** The second capture pass found
+  a control-shaped `All` there with nothing at the same position under Card 1, so the control
+  belongs to this card. It is never clicked on camera, so *filter* is our reading of it (§12.2).
+  It is independent of the metrics-table filter below — one card's slice must not silently
+  repaint the other's numbers.
+- Sat and Sun read zero for every instrument that closes at the weekend, because the bars come
+  from the ledger. A weekday breakdown that shows weekend sessions is reporting trades that
+  could not have happened.
 
 #### Metrics table
 
-Below the cards. A filter row (`All` / `Long` / `Short` — `All` is active, right-aligned, 11px),
-then two-column rows:
+Below the cards. A filter row (`All` / `Long` / `Short` — `All` is the default, right-aligned,
+11px), then two-column rows. **The filter recomputes every row from the selected slice, drawdown
+included** — a peak-to-trough caused by a short must not survive into the Long view. Shipping these
+as static markup with the first option permanently styled active is the failure mode: a control
+that looks like it filters and does not is worse than no control, because the reader trusts the
+number beside it.
 
 ```
 row height 30px, 1px --border between rows
@@ -617,10 +629,20 @@ that on screen.
   tinted `rgba(255,255,255,0.03)`
 - Two stat columns below, `In-sample` / `Out-of-sample`: `Net`, `Win rate`, `Profit factor`,
   `Trades`
-- A third column `Δ` showing OOS-minus-IS per row, `--loss` if OOS is materially worse
-- **Empty state, when no holdout is declared:** `No out-of-sample period declared for this run.`
-  Do not split the sample ourselves and present it as a holdout — a split invented at display time
-  is not a holdout.
+- A third column `Δ` showing OOS-minus-IS per row, `--loss` if OOS is materially worse.
+  **A win-rate Δ is in percentage POINTS and must be labelled `pp`** — printed bare beside two
+  values carrying `%`, it reads as a percentage change, which is a different quantity. **The
+  `Trades` Δ is never coloured**: it describes how the run was split, not how it performed, and
+  painting the smaller holdout red reads as a result getting worse.
+- The split caption states the actual split point. Do not hardcode it — it moves whenever the
+  signal count does.
+- **Two distinct empty states, and the panel must tell them apart:**
+  - No holdout declared → `No out-of-sample period declared for this run.` Do not split the sample
+    ourselves and present it as a holdout — a split invented at display time is not a holdout.
+  - **A holdout declared that no trade lands in** → say so, with both counts. This is the one that
+    gets missed: the guard tests the *declaration*, the table renders, and out-of-sample shows
+    `0.00`, `0.0%` and a large negative Δ — reporting that the strategy scored zero out of sample
+    when the truth is it was never tested there. **Gate on the data, not on the declaration.**
 
 #### 4. Trade distribution
 

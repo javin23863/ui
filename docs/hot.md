@@ -52,7 +52,14 @@ by design, so the chat reply is a scripted fixture that does not respond to what
 npm run check:palette     # reads hexes out of src/tokens.css, 20/20
 npx tsc -b                # clean
 npm run build             # clean
+node scripts/parity.mjs   # regenerates all seven sheets (needs dev server + CDP)
 ```
+
+Three fixture invariants also run on every dev boot (`src/fixtures/market.ts`): weekday total equals
+net profit, gross profit minus gross loss equals net profit, wins plus losses equals the trade
+count. **Proven by mutation 2026-08-05, not just written** — dropping Wednesday from the weekday
+derivation throws `weekday P&L sums to -1927.15, net profit is 1999.7` and the app refuses to
+render. An assertion nobody has watched fail is not yet a gate.
 
 `docs/parity/` holds the seven side-by-side sheets — **also `feat/ui-build` only**. All seven pass
 on §11's terms.
