@@ -94,40 +94,68 @@ Every value below was run through the dataviz validator against our own dark sur
 (OKLab ΔE ×100, Machado–Oliveira–Fernandes CVD simulation at severity 1.0). Numbers are in §2c.
 **Do not substitute an eyeballed hex into any of these slots** — re-run the validator instead.
 
-```css
-/* surfaces — cockpit-at-night, cooler and deeper than the reference's neutral grey */
---bg-app          #0A0C10   page + left rail (same value, no seam)
---bg-panel        #101319   workspace panel, cards, KPI strip, inputs · THE CHART SURFACE
---bg-elevated     #1A1F27   user chat bubble, dropdown surface, Run button, sticky footer
---bg-hover        #151A21   table + list row hover
---border          #1E242D   1px dividers, panel edges, card outlines
---border-strong   #2B3340   IS/OOS split rule, crosshair, scrollbar thumb
---icon-idle       #3A4351   left-rail icons at rest
-
-/* ink */
---text-primary    #F2F5FA   body copy, chat text, values
---text-secondary  #C3CAD6   active tab label
---text-muted      #8A94A3   KPI labels, idle tabs, axis ticks, placeholders
-
-/* semantics — reserved, never used for identity */
---profit          #0E9E8F   up candles, positive values, equity above water   5.58:1
---loss            #CE4040   down candles, negative values, equity under water 3.92:1
---warning         #D9A227   Thin sample / Sparse chips, cost-headroom alert    8.10:1
-
-/* brand — identity and interaction only, never a P&L value */
---accent          #3D86E0   token pill, focus ring, active pill, mic listening, OOS chip  5.03:1
-```
-
-Chart-derived fills (alpha over `--bg-panel`):
+This block is the real `src/tokens.css`, not a paraphrase of it — valid CSS, copy-pasteable.
+The `--color-*` prefix is required: Tailwind v4 derives its utilities from that namespace inside
+`@theme`, so `--color-profit` is what makes `text-profit` and `bg-profit` exist. Dropping the
+prefix silently yields no utilities at all.
 
 ```css
---tp-box-fill   rgba(14,158,143,0.20)   target zone
---sl-box-fill   rgba(206,64,64,0.20)    stop zone
---equity-fill   linear-gradient(180deg, rgba(14,158,143,0.26), transparent)
---ema-bull      #0E9E8F
---ema-bear      #CE4040
---scrim         rgba(10,12,16,0.60)     modal backdrop, no blur
+@theme {
+  /* surfaces — cockpit-at-night, cooler and deeper than the reference's neutral grey */
+  --color-bg-app: #0a0c10; /* page + left rail (same value, no seam) */
+  --color-bg-panel: #101319; /* workspace panel, cards, KPI strip · THE CHART SURFACE */
+  --color-bg-elevated: #1a1f27; /* user bubble, dropdowns, Run button, sticky footer */
+  --color-bg-hover: #151a21; /* table + list row hover */
+  --color-border: #1e242d; /* 1px dividers, panel edges, card outlines */
+  --color-border-strong: #2b3340; /* IS/OOS split rule, crosshair, scrollbar thumb */
+  --color-icon-idle: #3a4351; /* left-rail icons at rest */
+
+  /* ink */
+  --color-text-primary: #f2f5fa; /* body copy, chat text, values */
+  --color-text-secondary: #c3cad6; /* active tab label */
+  --color-text-muted: #8a94a3; /* KPI labels, idle tabs, axis ticks, placeholders */
+
+  /* semantics — reserved, never used for identity */
+  --color-profit: #0e9e8f; /* up candles, positive values, equity above water · 5.58:1 */
+  --color-loss: #ce4040; /* down candles, negative values, equity under water · 3.92:1 */
+  --color-warning: #d9a227; /* Thin sample / Sparse chips, cost-headroom alert · 8.10:1 */
+
+  /* brand — identity and interaction only, never a P&L value */
+  --color-accent: #3d86e0; /* token pill, focus ring, active pill, mic, OOS chip · 5.03:1 */
+
+  /* series slots — see §2d. Fixed order, assigned in sequence, never cycled. */
+  --color-series-1: #3d86e0;
+  --color-series-2: #9a7420;
+  --color-series-3: #9b7be8;
+}
 ```
+
+Chart-derived fills. These are plain custom properties on `:root`, **not** `@theme` entries —
+they are composite values (alpha, gradients) rather than colours Tailwind should build utilities
+from:
+
+```css
+:root {
+  --tp-box-fill: rgba(14, 158, 143, 0.2); /* target zone */
+  --sl-box-fill: rgba(206, 64, 64, 0.2); /* stop zone */
+  --scrim: rgba(10, 12, 16, 0.6); /* modal backdrop, no blur */
+}
+```
+
+The equity area gradient and the two EMA polarity colours are applied at their draw sites from
+`--color-profit` / `--color-loss` rather than aliased here — one fewer name to keep in sync.
+
+**One cascade rule that is not optional.** Base element styles must sit inside `@layer base`:
+
+```css
+@layer base {
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+}
+```
+
+Unlayered rules beat layered ones, and Tailwind utilities live in a layer. An unlayered
+`button { background: none }` silently overrides every `bg-*` and `text-*` utility on every button
+in the app. This shipped once and was caught only by reading computed style off the running page.
 
 ### 2c. Validator results — the receipts
 
