@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/* TraderCockpit design tokens — docs/UI-PARITY-SPEC.md §2b.
+   Every semantic + series value here is validated by scripts/check-palette.mjs.
+   Do not hand-edit a hex without re-running `npm run check:palette`. */
+@theme {
+  --color-bg-app: #0a0c10;
+  --color-bg-panel: #101319;
+  --color-bg-elevated: #1a1f27;
+  --color-bg-hover: #151a21;
+  --color-border: #1e242d;
+  --color-border-strong: #2b3340;
+  --color-icon-idle: #3a4351;
+
+  --color-text-primary: #f2f5fa;
+  --color-text-secondary: #c3cad6;
+  --color-text-muted: #8a94a3;
+
+  --color-profit: #0e9e8f;
+  --color-loss: #ce4040;
+  --color-warning: #d9a227;
+  --color-accent: #3d86e0;
+
+  --color-series-1: #3d86e0;
+  --color-series-2: #9a7420;
+  --color-series-3: #9b7be8;
+
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+}
+
+:root {
+  color-scheme: dark;
+  --tp-box-fill: rgba(14, 158, 143, 0.2);
+  --sl-box-fill: rgba(206, 64, 64, 0.2);
+  --scrim: rgba(10, 12, 16, 0.6);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-app);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin scrollbars — spec §4, 3px inset on the chat column, 4px in panes. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Numerics that must align vertically — §8d. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+input {
+  font: inherit;
+  color: inherit;
+}
