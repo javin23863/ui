@@ -126,8 +126,9 @@ export default function ApolloOrb({
           }}
         />
 
-        {/* The sphere. Offset highlight + rim light read as a lit ball rather
-            than a flat disc. */}
+        {/* The orb. Soft-edged and bloom-led rather than a hard-edged 3D ball:
+            the reference language is a blurred boundary with no outline, deep at
+            the base tapering to pale toward the top. */}
         <span
           aria-hidden
           className="relative rounded-full"
@@ -136,15 +137,30 @@ export default function ApolloOrb({
             height: SIZE,
             transform: `scale(${scale})`,
             background: `
-              radial-gradient(circle at 32% 28%,
-                color-mix(in oklab, var(--color-accent) 18%, white) 0%,
-                var(--color-accent) 38%,
-                color-mix(in oklab, var(--color-accent) 62%, black) 78%,
-                color-mix(in oklab, var(--color-accent) 38%, black) 100%)`,
-            boxShadow: `
-              0 0 ${14 + scale * 10}px color-mix(in oklab, var(--color-accent) 45%, transparent),
-              inset 0 -3px 8px color-mix(in oklab, black 45%, transparent),
-              inset 0 2px 5px color-mix(in oklab, white 28%, transparent)`,
+              radial-gradient(circle at 50% 34%,
+                color-mix(in oklab, var(--color-accent) 12%, white) 0%,
+                color-mix(in oklab, var(--color-accent) 72%, white) 30%,
+                var(--color-accent) 58%,
+                color-mix(in oklab, var(--color-accent) 70%, black) 88%,
+                transparent 100%)`,
+            filter: `blur(0.6px) saturate(1.15)`,
+            boxShadow: `0 0 ${16 + scale * 12}px color-mix(in oklab, var(--color-accent) 42%, transparent)`,
+          }}
+        />
+
+        {/* Inner bloom — keeps the centre luminous as the orb swells, so the
+            pulse reads as light rather than as a resizing disc. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute rounded-full"
+          style={{
+            width: SIZE * 0.62,
+            height: SIZE * 0.62,
+            transform: `scale(${1 + (scale - 1) * 2.2})`,
+            background:
+              "radial-gradient(circle at 50% 42%, color-mix(in oklab, white 72%, var(--color-accent)) 0%, transparent 70%)",
+            opacity: 0.28 + smoothed.current * 0.5,
+            filter: "blur(4px)",
           }}
         />
 
