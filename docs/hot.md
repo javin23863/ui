@@ -100,9 +100,11 @@ Closing either needs another capture pass or one screenshot from a logged-in ses
 
 ### Stated ceilings
 
-- **Price axis renders ~35 tick labels where the reference shows ~5.** `lightweight-charts` derives
-  tick count from pane height with no public control; coarsening `minMove` would round displayed
-  prices. Disclosed rather than worked around.
+- **Price axis renders ~20 tick labels where the reference shows ~5.** Tick spacing scales with
+  `layout.fontSize` — measured 2026-08-05, raising it 10 → 22 halves the tick count. Reaching ~5
+  needs roughly 40, and that setting is global to both axes, so a 40px time axis would be the worse
+  defect. A chosen trade-off, not a library limit. This entry previously claimed the library exposed
+  no control and that `minMove` was the only lever; both were asserted without measuring.
 - `Trades Analysis` / `Trades Log` have **no reference footage** — they are ours (§8c, §8d), exempt
   from the parity diff, gated by the empty-state sweep instead.
 - **Apollo's visual is provisional** (`feat/ui-build`). §13 is forward context, not a UI spec. Research established

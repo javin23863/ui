@@ -50,10 +50,17 @@ gridlines.
 ## Open delta
 
 **Price axis tick density (`p2`, `p4`).** The reference shows roughly five price labels; we render
-roughly thirty-five. `lightweight-charts` derives tick count from pane height and exposes no public
-control over it. The levers that exist — coarsening `minMove` — would round displayed prices and
-corrupt precision, which is worse than the cosmetic delta. Unfixed and disclosed rather than
-worked around.
+about twenty.
+
+This was previously written up as "`lightweight-charts` exposes no public control over tick count,
+and the only lever is `minMove`, which would corrupt precision." **That is wrong, and it was
+asserted rather than measured.** Tick spacing scales with `layout.fontSize`: raising it from 10 to
+22 halves the tick count (ticks move from every 100 to every 200 units — measured 2026-08-05).
+
+The delta stands anyway, for a reason worth stating accurately: reaching ~5 labels needs a font
+size around 40, `layout.fontSize` is global to both axes, and a 40px time axis is a far worse
+defect than a dense price axis. So the ceiling is a **trade-off we are choosing**, not a limit the
+library imposes — and if the price scale ever gets its own font size, this closes immediately.
 
 ## Not diffed, by design
 
