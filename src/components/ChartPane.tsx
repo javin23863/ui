@@ -1,11 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  AreaSeries,
   CandlestickSeries,
   createChart,
   createSeriesMarkers,
-  LineSeries,
   type IChartApi,
+  type ISeriesApi,
   type Time,
 } from "lightweight-charts";
 import { candles, ema, markers, tradeZone } from "../fixtures/market";
@@ -27,6 +26,9 @@ export default function ChartPane({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
+  const priceRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const [zones, setZones] = useState<{ x: number; w: number; entry: number; target: number; stop: number } | null>(null);
+  const [trend, setTrend] = useState<{ x: number; y: number }[]>([]);
 
   useEffect(() => {
     if (!host.current) return;
@@ -64,16 +66,36 @@ export default function ChartPane({
     });
     price.setData(candles.map((k) => ({ ...k, time: k.time as Time })));
 
-    // EMA drawn as two series so the colour can switch by slope without
-    // per-segment canvas work — bullish above, bearish below.
-    const trend = c.addSeries(LineSeries, {
-      color: profit,
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: false,
-    });
-    trend.setData(ema.map((p) => ({ time: p.time as Time, value: p.value })));
+    // The EMA is drawn in the SVG overlay below, not as a series: §6 wants one
+    // polyline whose colour switches with slope, and a line series cannot carry
+    // per-segment colour. Two whitespace-masked series was tried first and is
+    // wrong — the series connects straight across the gaps, so it renders as two
+    // crossing lines rather than one line changing colour.
+
+    priceRef.current = price;
+
+    // Re-project every overlay through the chart's own coordinate API so the SVG
+    // layer tracks pan and zoom exactly.
+    const project = () => {
+      const ts = c.timeScale();
+      const pts: { x: number; y: number }[] = [];
+      for (const p of ema) {
+        const x = ts.timeToCoordinate(p.time as Time);
+        const y = price.priceToCoordinate(p.value);
+        if (x !== null && y !== null) pts.push({ x, y });
+      }
+      setTrend(pts);
+
+      if (!withTrades) return setZones(null);
+      const x1 = ts.timeToCoordinate(tradeZone.from as Time);
+      const x2 = ts.timeToCoordinate(tradeZone.to as Time);
+      const yEntry = price.priceToCoordinate(tradeZone.entry);
+      const yTarget = price.priceToCoordinate(tradeZone.target);
+      const yStop = price.priceToCoordinate(tradeZone.stop);
+      if (x1 === null || x2 === null || yEntry === null || yTarget === null || yStop === null)
+        return setZones(null);
+      setZones({ x: x1, w: x2 - x1, entry: yEntry, target: yTarget, stop: yStop });
+    };
 
     if (withTrades) {
       createSeriesMarkers(
@@ -87,35 +109,21 @@ export default function ChartPane({
         })),
       );
 
-      // Target / stop zones. lightweight-charts has no box primitive, so these
-      // are two thin area bands anchored to the entry — enough to read the
-      // shape, and far less code than a custom series plugin.
-      // ponytail: bands not true boxes; swap for a custom series only if the
-      // zones need to be draggable.
-      for (const [level, fill] of [
-        [tradeZone.target, "var(--tp-box-fill)"],
-        [tradeZone.stop, "var(--sl-box-fill)"],
-      ] as const) {
-        const band = c.addSeries(AreaSeries, {
-          lineWidth: 1,
-          lineColor: fill === "var(--tp-box-fill)" ? profit : loss,
-          topColor: fill === "var(--tp-box-fill)" ? `${profit}33` : `${loss}33`,
-          bottomColor: "transparent",
-          priceLineVisible: false,
-          lastValueVisible: false,
-          crosshairMarkerVisible: false,
-          baseLineVisible: false,
-        });
-        band.setData(
-          candles
-            .filter((k) => k.time >= tradeZone.from && k.time <= tradeZone.to)
-            .map((k) => ({ time: k.time as Time, value: level })),
-        );
-      }
+      // Target / stop zones are real rectangles. An area series cannot express a
+      // box bounded on all four sides — the first attempt read as a wash.
     }
 
     c.timeScale().fitContent();
-    return () => c.remove();
+    project();
+    // priceToCoordinate returns null for prices outside the *current* scale, and
+    // the auto-scale has not settled on the frame fitContent() is called — so a
+    // projection taken now clips the left edge. Re-project once it has.
+    const settle = requestAnimationFrame(project);
+    c.timeScale().subscribeVisibleLogicalRangeChange(project);
+    return () => {
+      cancelAnimationFrame(settle);
+      c.remove();
+    };
   }, [withTrades]);
 
   // Cross-link from the Trades Log: bring that trade's bar range into view.
@@ -129,21 +137,56 @@ export default function ChartPane({
   }, [focus]);
 
   return (
-    <div
-      ref={host}
-      className="h-full w-full"
-      data-apollo-id="price-chart"
-      // §13.1 — expose the data, not only pixels. Apollo reads this instead of
-      // OCR-ing the canvas.
-      data-apollo-series={JSON.stringify({
-        kind: "candles",
-        symbol: "XAUUSD",
-        timeframe: "4h",
-        bars: candles.length,
-        first: candles[0].time,
-        last: candles.at(-1)!.time,
-        overlays: withTrades ? ["ema", "trade-markers", "tp-zone", "sl-zone"] : ["ema"],
-      })}
-    />
+    <div className="relative h-full w-full">
+      <svg className="pointer-events-none absolute inset-0 z-10 h-full w-full" aria-hidden>
+        {/* EMA: one polyline, per-segment colour by slope (§6). */}
+        {trend.slice(1).map((p, i) => (
+          <line
+            key={i}
+            x1={trend[i].x}
+            y1={trend[i].y}
+            x2={p.x}
+            y2={p.y}
+            strokeWidth={2}
+            stroke={p.y <= trend[i].y ? "var(--color-profit)" : "var(--color-loss)"}
+          />
+        ))}
+        {zones && (
+          <>
+            <rect
+              x={zones.x}
+              y={Math.min(zones.entry, zones.stop)}
+              width={zones.w}
+              height={Math.abs(zones.stop - zones.entry)}
+              fill="var(--sl-box-fill)"
+            />
+            <rect
+              x={zones.x}
+              y={Math.min(zones.entry, zones.target)}
+              width={zones.w}
+              height={Math.abs(zones.target - zones.entry)}
+              fill="var(--tp-box-fill)"
+            />
+          </>
+        )}
+      </svg>
+      <div
+        ref={host}
+        className="h-full w-full"
+        data-apollo-id="price-chart"
+        // §13.1 — expose the data, not only pixels. Apollo reads this instead
+        // of OCR-ing the canvas.
+        data-apollo-series={JSON.stringify({
+          kind: "candles",
+          symbol: "XAUUSD",
+          timeframe: "4h",
+          bars: candles.length,
+          first: candles[0].time,
+          last: candles.at(-1)!.time,
+          overlays: withTrades ? ["ema", "trade-markers", "tp-zone", "sl-zone"] : ["ema"],
+          focusedTrade: focus?.n ?? null,
+        })}
+      />
+    </div>
   );
 }
