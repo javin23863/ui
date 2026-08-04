@@ -61,7 +61,16 @@ function inline(s: string) {
   });
 }
 
-export default function ChatPane({ turns, onSend }: { turns: Turn[]; onSend: (t: string) => void }) {
+export default function ChatPane({
+  turns,
+  onSend,
+  onVoice,
+}: {
+  turns: Turn[];
+  onSend: (t: string) => void;
+  /** Mirrors mic state + amplitude up to Apollo, so the orb reacts to your voice. */
+  onVoice?: (state: "idle" | "listening", level: number) => void;
+}) {
   const [draft, setDraft] = useState("");
   const [consent, setConsent] = useState(() => localStorage.getItem(CONSENT_KEY) === "1");
   const [askConsent, setAskConsent] = useState(false);
@@ -69,6 +78,11 @@ export default function ChatPane({ turns, onSend }: { turns: Turn[]; onSend: (t:
 
   const dict = useDictation((finalText) => setDraft((d) => (d ? d + " " : "") + finalText));
   const empty = turns.length === 0;
+
+  const listening = dict.state === "listening";
+  useEffect(() => {
+    onVoice?.(listening ? "listening" : "idle", listening ? (dict.level[0] ?? 0) : 0);
+  }, [listening, dict.level, onVoice]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });

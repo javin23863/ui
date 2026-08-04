@@ -2,6 +2,8 @@ import { useState } from "react";
 import { ChevronDown, Clock, Hexagon, PencilLine, Radar, Sparkles, User } from "lucide-react";
 import ChatPane, { type Turn } from "./components/ChatPane";
 import Workspace from "./components/Workspace";
+import ApolloOrb from "./components/ApolloOrb";
+import { ApolloContext, type ApolloState } from "./components/useApollo";
 import { cx } from "./ui";
 
 const RAIL = [
@@ -41,15 +43,24 @@ export default function App() {
     SEEDED ? [{ id: "u0", source: "user", text: "Build a sweep and engulf strategy on gold, 4h." }, ...SCRIPT] : [],
   );
   const [collapsed, setCollapsed] = useState(false);
+  const [apollo, setApollo] = useState<ApolloState>("idle");
+  const [level, setLevel] = useState(0);
 
   const send = (text: string) => {
     setTurns((t) => [...t, { id: `u${t.length}`, source: "user", text }, ...(t.length === 0 ? SCRIPT : [])]);
+    // Apollo visibly works before it answers. No model runs — capabilities are
+    // out of scope — so this only exercises the presence states.
+    setApollo("thinking");
+    setTimeout(() => setApollo("idle"), 1400);
   };
 
   const hasStrategy = turns.length > 0;
 
   return (
-    <div className="flex h-full bg-bg-app">
+    <ApolloContext.Provider
+      value={{ state: apollo, level, saw: hasStrategy ? "your chart, 4h XAUUSD" : null, setState: setApollo }}
+    >
+      <div className="flex h-full bg-bg-app">
       <nav className="flex w-10 shrink-0 flex-col items-center pt-3.5" aria-label="Primary">
         <Hexagon size={19} className="mb-6 text-accent" />
         {RAIL.map((r) => (
@@ -90,7 +101,7 @@ export default function App() {
               collapsed ? "w-0" : "w-[545px]",
             )}
           >
-            <ChatPane turns={turns} onSend={send} />
+            <ChatPane turns={turns} onSend={send} onVoice={(s, l) => (setApollo(s), setLevel(l))} />
           </div>
           <div className={cx("w-px shrink-0 bg-border", collapsed && "hidden")} />
           <div className="min-h-0 min-w-0 flex-1 pl-4">
@@ -103,6 +114,14 @@ export default function App() {
           </div>
         </div>
       </div>
-    </div>
+
+      <ApolloOrb
+        state={apollo}
+        level={level}
+        label={apollo === "thinking" ? "Reading your chart…" : null}
+        onClick={() => setApollo((s) => (s === "idle" ? "listening" : "idle"))}
+      />
+      </div>
+    </ApolloContext.Provider>
   );
 }
