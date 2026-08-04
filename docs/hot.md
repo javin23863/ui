@@ -20,9 +20,22 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Branches | `docs/ui-parity-spec` → PR #1 · `feat/ui-build` → PR #2, **stacked on #1** |
 | `main` | still only the 4-byte README — merge #1 first, then #2 |
 | Board card | `consumer.ui-parity-spec` under `cap.consumer-shell`, **verify** |
-| Build | **exists and runs.** `npm i && npm run dev` → http://localhost:5199 |
 
-### What is built
+> ### Which branch am I on?
+>
+> **This file is checked in on both branches and describes both.** Nothing below runs from the
+> spec branch alone.
+>
+> | | `docs/ui-parity-spec` (PR #1) | `feat/ui-build` (PR #2) |
+> |---|---|---|
+> | `docs/UI-PARITY-SPEC.md`, `docs/reference/` | yes | yes |
+> | `package.json`, `src/`, `scripts/`, `docs/parity/` | **no** | yes |
+> | `npm i && npm run dev` | **cannot run** | runs → http://localhost:5199 |
+>
+> If `ls package.json` fails, you are on the spec branch. Everything in *What is built*, *Gates*
+> and *Runbook* below refers to `feat/ui-build`.
+
+### What is built — on `feat/ui-build` only
 
 Shell · chat pane with markdown transcript and voice dictation · chart pane · Pine code view ·
 collapsed backtest dock · expanded backtest panel · `Trades Analysis` · `Trades Log` ·
@@ -32,7 +45,7 @@ Everything renders from `src/fixtures/market.ts`, seeded so screenshots are repr
 **No LLM, no Pine compilation, no market data, no backtest engine** — capabilities are out of scope
 by design, so the chat reply is a scripted fixture that does not respond to what you type.
 
-### Gates — all currently green
+### Gates — green on `feat/ui-build`
 
 ```
 npm run check:palette     # reads hexes out of src/tokens.css, 20/20
@@ -40,7 +53,8 @@ npx tsc -b                # clean
 npm run build             # clean
 ```
 
-`docs/parity/` holds the seven side-by-side sheets. All seven pass on §11's terms.
+`docs/parity/` holds the seven side-by-side sheets — **also `feat/ui-build` only**. All seven pass
+on §11's terms.
 
 ### Traps already bought — do not re-derive these
 
@@ -65,7 +79,7 @@ npm run build             # clean
 
 1. Clear Greptile on both PRs, then **merge #1 before #2** (#2 is based on #1, not on `main`).
 2. Operator moves the board card `verify → done`. Only the operator does this.
-3. Restart the dev server if screenshots are needed: `npm run dev`, then
+3. Steps below need `feat/ui-build`. Start the dev server for screenshots: `npm run dev`, then
    `SEED=1 node scripts/shoot.mjs <out.png> [clickSelector ...]`.
    `node scripts/probe.mjs "<js>"` reads computed style off the running page — use it when
    something looks wrong but the source looks right.
@@ -88,7 +102,7 @@ Closing either needs another capture pass or one screenshot from a logged-in ses
   prices. Disclosed rather than worked around.
 - `Trades Analysis` / `Trades Log` have **no reference footage** — they are ours (§8c, §8d), exempt
   from the parity diff, gated by the empty-state sweep instead.
-- **Apollo's visual is provisional.** §13 is forward context, not a UI spec. Research established
+- **Apollo's visual is provisional** (`feat/ui-build`). §13 is forward context, not a UI spec. Research established
   that the reference product moved voice *out* of a floating orb and into the chat thread in
   Nov 2025, and that the Jul 2026 release was a voice model with no visual redesign — so an
   ever-present orb is our own choice. No public source documents its animation at an implementable
