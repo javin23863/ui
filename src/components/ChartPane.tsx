@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CandlestickSeries,
   createChart,
@@ -7,7 +7,7 @@ import {
   type ISeriesApi,
   type Time,
 } from "lightweight-charts";
-import { candles, ema, markers, tradeZone } from "../fixtures/market";
+import { candlesFor, emaFor, markers, RUN_SYMBOL, tradeZone } from "../fixtures/market";
 
 const T = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
@@ -17,24 +17,52 @@ const T = (n: string) => getComputedStyle(document.documentElement).getPropertyV
  * Every charting library defaults to the opposite, so these are all explicit.
  */
 export default function ChartPane({
+  symbol,
   withTrades,
   focus,
 }: {
+  symbol: string;
   withTrades: boolean;
   /** A trade selected in the Trades Log — the chart scrolls to its bar range (§8d). */
   focus?: { n: number; entryTime: number; exitTime: number } | null;
 }) {
+  // Trade overlays belong to the committed run. Drawing them over a different
+  // instrument would attribute those fills to a market they never happened in.
+  const showTrades = withTrades && symbol === RUN_SYMBOL;
   const host = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const priceRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const [zones, setZones] = useState<{ x: number; w: number; entry: number; target: number; stop: number } | null>(null);
   const [trend, setTrend] = useState<{ x: number; y: number }[]>([]);
 
+  // §13.1 — what Apollo reads instead of OCR-ing the canvas. Derived from the
+  // same source the chart draws from, so it cannot describe a different series.
+  const meta = useMemo(() => {
+    const cs = candlesFor(symbol);
+    return {
+      kind: "candles",
+      symbol,
+      timeframe: "4h",
+      bars: cs.length,
+      first: cs[0].time,
+      last: cs.at(-1)!.time,
+      overlays: showTrades ? ["ema", "trade-markers", "tp-zone", "sl-zone"] : ["ema"],
+      tradesShown: showTrades,
+      runSymbol: RUN_SYMBOL,
+      focusedTrade: focus?.n ?? null,
+    };
+  }, [symbol, showTrades, focus?.n]);
+
   useEffect(() => {
     if (!host.current) return;
+    const candles = candlesFor(symbol);
+    const ema = emaFor(candles);
     const profit = T("--color-profit");
     const loss = T("--color-loss");
     const muted = T("--color-text-muted");
+    // Forex needs more decimals than an index; derive precision from the level.
+    const px0 = candles[0].close;
+    const precision = px0 < 10 ? 4 : px0 < 1000 ? 2 : 2;
 
     const c = createChart(host.current, {
       layout: {
@@ -63,6 +91,7 @@ export default function ChartPane({
       wickUpColor: profit,
       wickDownColor: loss,
       priceLineVisible: false,
+      priceFormat: { type: "price", precision, minMove: 1 / 10 ** precision },
     });
     price.setData(candles.map((k) => ({ ...k, time: k.time as Time })));
 
@@ -86,7 +115,7 @@ export default function ChartPane({
       }
       setTrend(pts);
 
-      if (!withTrades) return setZones(null);
+      if (!showTrades) return setZones(null);
       const x1 = ts.timeToCoordinate(tradeZone.from as Time);
       const x2 = ts.timeToCoordinate(tradeZone.to as Time);
       const yEntry = price.priceToCoordinate(tradeZone.entry);
@@ -97,7 +126,7 @@ export default function ChartPane({
       setZones({ x: x1, w: x2 - x1, entry: yEntry, target: yTarget, stop: yStop });
     };
 
-    if (withTrades) {
+    if (showTrades) {
       createSeriesMarkers(
         price,
         markers.map((m) => ({
@@ -124,7 +153,7 @@ export default function ChartPane({
       cancelAnimationFrame(settle);
       c.remove();
     };
-  }, [withTrades]);
+  }, [showTrades, symbol]);
 
   // Cross-link from the Trades Log: bring that trade's bar range into view.
   useEffect(() => {
@@ -174,18 +203,9 @@ export default function ChartPane({
         ref={host}
         className="h-full w-full"
         data-apollo-id="price-chart"
-        // §13.1 — expose the data, not only pixels. Apollo reads this instead
-        // of OCR-ing the canvas.
-        data-apollo-series={JSON.stringify({
-          kind: "candles",
-          symbol: "XAUUSD",
-          timeframe: "4h",
-          bars: candles.length,
-          first: candles[0].time,
-          last: candles.at(-1)!.time,
-          overlays: withTrades ? ["ema", "trade-markers", "tp-zone", "sl-zone"] : ["ema"],
-          focusedTrade: focus?.n ?? null,
-        })}
+        
+        
+        data-apollo-series={JSON.stringify(meta)}
       />
     </div>
   );

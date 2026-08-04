@@ -6,8 +6,8 @@ import BacktestPanel, { summaryKpis } from "./BacktestPanel";
 import { EquityCurve } from "./charts";
 import SettingsModal from "./SettingsModal";
 import TickerPicker from "./TickerPicker";
-import { cx, KpiStrip } from "../ui";
-import { equity, pineSource, summary } from "../fixtures/market";
+import { AssetBadge, cx, KpiStrip } from "../ui";
+import { equity, pineSource, RUN_SYMBOL, summary } from "../fixtures/market";
 
 type View = "chart" | "code" | "backtest";
 
@@ -115,7 +115,7 @@ export default function Workspace({
               onClick={() => setPicker((p) => !p)}
               className="flex h-8 items-center gap-1.5 rounded-md bg-bg-panel px-2 text-[13px] hover:bg-bg-hover"
             >
-              <span className="grid size-4 place-items-center rounded-full bg-warning/25 text-[8px] text-warning">Au</span>
+              <AssetBadge symbol={symbol} />
               {symbol}
               <span className="size-1.5 rounded-full bg-profit" />
               <ChevronDown size={12} className="text-text-muted" />
@@ -155,8 +155,14 @@ export default function Workspace({
               </button>
             </div>
           )}
+          {hasStrategy && symbol !== RUN_SYMBOL && (
+            <div className="mx-4 mb-1 rounded-md bg-bg-elevated px-3 py-1.5 text-[11px] text-text-muted">
+              Showing {symbol}. The backtest below was run on {RUN_SYMBOL} — its trades are not
+              drawn here.
+            </div>
+          )}
           <div className="min-h-0 flex-1">
-            <ChartPane withTrades={hasStrategy} focus={focus} />
+            <ChartPane symbol={symbol} withTrades={hasStrategy} focus={focus} />
           </div>
 
           {hasStrategy && (

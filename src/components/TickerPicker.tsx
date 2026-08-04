@@ -98,6 +98,7 @@ export default function TickerPicker({
         {rows.map((r) => (
           <li key={r.sym}>
             <button
+              data-apollo-id={`ticker-${r.sym.toLowerCase()}`}
               onClick={() => onPick(r.sym)}
               className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left hover:bg-bg-hover"
             >

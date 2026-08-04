@@ -32,8 +32,14 @@ export function useDictation(onText: (finalText: string) => void) {
   const recRef = useRef<SR | null>(null);
   const silence = useRef<number | undefined>(undefined);
   const audio = useRef<{ ctx: AudioContext; stream: MediaStream; raf: number } | null>(null);
+  // Bumped on every teardown. getUserMedia is async, so a stop or unmount can
+  // land while the permission prompt is still open — without this the late
+  // continuation stores a live stream after cleanup ran and the microphone
+  // stays hot with the UI showing "stopped".
+  const meterToken = useRef(0);
 
   const teardownMeter = useCallback(() => {
+    meterToken.current++;
     if (!audio.current) return;
     cancelAnimationFrame(audio.current.raf);
     audio.current.stream.getTracks().forEach((t) => t.stop());
@@ -53,8 +59,14 @@ export function useDictation(onText: (finalText: string) => void) {
 
   // Amplitude meter — decorative, aria-hidden. Drives the 5 bars in the composer.
   const startMeter = useCallback(async () => {
+    const token = ++meterToken.current;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Stopped while the prompt was open — release the device immediately.
+      if (token !== meterToken.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       const ctx = new AudioContext();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;

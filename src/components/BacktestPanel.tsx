@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Minimize2, Star } from "lucide-react";
 import { CategoryBars, DailyPnl, EquityCurve } from "./charts";
-import { Card, cx, KpiStrip, Legend, Signed } from "../ui";
+import { AssetBadge, Card, cx, KpiStrip, Legend, Signed } from "../ui";
 import { dailyPnl, equity, metrics, summary, weekdayPnl } from "../fixtures/market";
 import TradesAnalysis from "./TradesAnalysis";
 import TradesLog from "./TradesLog";
@@ -43,7 +43,7 @@ export default function BacktestPanel({
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-2 px-4 pt-3">
         <span className="flex h-7 items-center gap-1.5 rounded-md bg-bg-panel px-2 text-[13px]">
-          <span className="grid size-4 place-items-center rounded-full bg-warning/25 text-[8px] text-warning">Au</span>
+          <AssetBadge symbol={summary.symbol} />
           {summary.symbol}
         </span>
         <span className="flex h-7 items-center rounded-md bg-bg-panel px-2 text-[13px] text-text-muted">{summary.timeframe}</span>

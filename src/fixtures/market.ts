@@ -38,31 +38,66 @@ function rng(seed: number) {
 const DAY = 86400;
 const START = Math.floor(Date.UTC(2026, 4, 5) / 1000);
 
-export const candles: Candle[] = (() => {
-  const r = rng(20260805);
+/** Where each instrument trades, so a symbol's price scale is plausible. */
+const BASE: Record<string, number> = {
+  XAUUSD: 4062,
+  XAGUSD: 48.2,
+  WTIUSD: 71.4,
+  BTCUSD: 61240,
+  ETHUSD: 3180,
+  GBPUSD: 1.2740,
+  USDCHF: 0.8062,
+  AUDUSD: 0.6615,
+  USDCAD: 1.3585,
+  NZDUSD: 0.6021,
+  NVDA: 198.6,
+  AAPL: 287.2,
+  MSFT: 370.1,
+  TSLA: 419.6,
+  SPY: 612.4,
+  QQQ: 528.9,
+};
+
+const seedOf = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7);
+
+/**
+ * Per-symbol candles. The series is derived from the symbol so the chart can
+ * never show one instrument's price action under another's name — selecting a
+ * ticker used to change only the label, which in a trading UI misattributes
+ * price action to the wrong market.
+ */
+export function candlesFor(symbol: string): Candle[] {
+  const base = BASE[symbol] ?? 100;
+  const vol = base * 0.0016;
+  const r = rng(seedOf(symbol));
   const out: Candle[] = [];
-  let px = 4062;
+  let px = base;
   for (let i = 0; i < 420; i++) {
-    const drift = Math.sin(i / 38) * 1.6 + (i > 300 ? 0.55 : 0.06);
+    const drift = Math.sin(i / 38) * vol * 1.4 + (i > 300 ? vol * 0.5 : vol * 0.05);
     const open = px;
-    const close = open + drift + (r() - 0.5) * 11;
-    const high = Math.max(open, close) + r() * 5.5;
-    const low = Math.min(open, close) - r() * 5.5;
+    const close = open + drift + (r() - 0.5) * vol * 9;
+    const high = Math.max(open, close) + r() * vol * 4.5;
+    const low = Math.min(open, close) - r() * vol * 4.5;
     out.push({ time: START + i * DAY * 0.25, open, high, low, close });
     px = close;
   }
   return out;
-})();
+}
 
-// EMA overlay — colour switches by slope (§6), drawn as one polyline.
-export const ema: { time: number; value: number }[] = (() => {
+export function emaFor(cs: Candle[]): { time: number; value: number }[] {
   const k = 2 / (60 + 1);
-  let e = candles[0].close;
-  return candles.map((c) => {
+  let e = cs[0].close;
+  return cs.map((c) => {
     e = c.close * k + e * (1 - k);
     return { time: c.time, value: e };
   });
-})();
+}
+
+/** The symbol the committed backtest run belongs to. */
+export const RUN_SYMBOL = "XAUUSD";
+
+export const candles = candlesFor(RUN_SYMBOL);
+export const ema = emaFor(candles);
 
 export const markers: Marker[] = [
   { time: candles[64].time, side: "short", kind: "entry", qty: 10, price: candles[64].high },

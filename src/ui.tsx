@@ -2,6 +2,24 @@ import type { ReactNode } from "react";
 
 export const cx = (...c: (string | false | undefined | null)[]) => c.filter(Boolean).join(" ");
 
+/**
+ * Asset badge. Derived from the symbol, never hardcoded — a gold badge beside a
+ * BTCUSD label is the same defect class as a gold chart beside a BTCUSD label.
+ */
+export function AssetBadge({ symbol }: { symbol: string }) {
+  const known: Record<string, { text: string; tone: string }> = {
+    XAUUSD: { text: "Au", tone: "bg-warning/25 text-warning" },
+    XAGUSD: { text: "Ag", tone: "bg-text-muted/25 text-text-secondary" },
+    WTIUSD: { text: "Oil", tone: "bg-text-muted/25 text-text-secondary" },
+    BTCUSD: { text: "₿", tone: "bg-warning/25 text-warning" },
+    ETHUSD: { text: "Ξ", tone: "bg-accent/25 text-accent" },
+  };
+  const b = known[symbol] ?? { text: symbol.slice(0, 2), tone: "bg-accent/25 text-accent" };
+  return (
+    <span className={cx("grid size-4 place-items-center rounded-full text-[8px]", b.tone)}>{b.text}</span>
+  );
+}
+
 /** Signed money/number. Colour is never the only carrier — the sign always renders (§2c). */
 export function Signed({ value, unit, digits = 2 }: { value: number; unit?: string; digits?: number }) {
   const tone = value > 0 ? "text-profit" : value < 0 ? "text-loss" : "text-text-primary";
