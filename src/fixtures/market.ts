@@ -77,6 +77,9 @@ const TF_SECONDS: Record<string, number> = {
   W: 7 * DAY,
 };
 
+/** Crypto trades through the weekend. Metals, FX and equities do not. */
+const ALWAYS_ON = new Set(["BTCUSD", "ETHUSD"]);
+
 export function candlesFor(symbol: string, timeframe = "4h"): Candle[] {
   const base = BASE[symbol] ?? 100;
   const step = TF_SECONDS[timeframe] ?? TF_SECONDS["4h"];
@@ -85,19 +88,34 @@ export function candlesFor(symbol: string, timeframe = "4h"): Candle[] {
   // the data, not just the chip.
   const vol = base * 0.0016 * Math.sqrt(step / TF_SECONDS["4h"]);
   const r = rng(seedOf(symbol + timeframe));
+  const alwaysOn = ALWAYS_ON.has(symbol);
   const out: Candle[] = [];
   let px = base;
+  let t = START;
   for (let i = 0; i < 420; i++) {
     const drift = Math.sin(i / 38) * vol * 1.4 + (i > 300 ? vol * 0.5 : vol * 0.05);
     const open = px;
     const close = open + drift + (r() - 0.5) * vol * 9;
     const high = Math.max(open, close) + r() * vol * 4.5;
     const low = Math.min(open, close) - r() * vol * 4.5;
-    out.push({ time: START + i * step, open, high, low, close });
+    out.push({ time: t, open, high, low, close });
     px = close;
+    t += step;
+    // Roll forward out of the weekend. Timestamps were a flat START + i * step,
+    // which prints Saturday and Sunday bars for an instrument that is closed —
+    // and any weekday breakdown built from them invents a session. It showed up
+    // the moment Weekday Performance stopped being hand-written: gold's best
+    // day came out Saturday. DAY is a whole multiple of every intraday step
+    // here, so skipping in whole days preserves the intraday alignment.
+    if (!alwaysOn) while (isWeekend(t)) t += DAY;
   }
   return out;
 }
+
+const isWeekend = (t: number) => {
+  const d = new Date(t * 1000).getUTCDay();
+  return d === 0 || d === 6;
+};
 
 export function emaFor(cs: Candle[]): { time: number; value: number }[] {
   const k = 2 / (60 + 1);
@@ -174,20 +192,49 @@ export const equity = trades.map((t) => ({ time: t.entryTime, value: t.cum, n: t
 
 export const dailyPnl = trades.map((t) => ({ time: t.entryTime, value: t.net }));
 
-export const weekdayPnl = [
-  { label: "Sun", value: 0 },
-  { label: "Mon", value: 1830.4 },
-  { label: "Tue", value: -640.2 },
-  { label: "Wed", value: 2410.9 },
-  { label: "Thu", value: 980.15 },
-  { label: "Fri", value: -310.55 },
-  { label: "Sat", value: 0 },
-];
+// Derived from the trades, never written by hand. Hand-entered weekday totals
+// summed to 4,270.70 against a net profit of 1,813.27 — an aggregate that
+// contradicts the ledger it claims to summarise, which is the same defect as a
+// label that moves without its data.
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export const weekdayPnl = WEEKDAYS.map((label, day) => ({
+  label,
+  value:
+    Math.round(
+      trades
+        .filter((t) => new Date(t.entryTime * 1000).getUTCDay() === day)
+        .reduce((s, t) => s + t.net, 0) * 100,
+    ) / 100,
+}));
 
 const wins = trades.filter((t) => t.net > 0);
 const losses = trades.filter((t) => t.net <= 0);
 const grossProfit = wins.reduce((s, t) => s + t.net, 0);
 const grossLoss = Math.abs(losses.reduce((s, t) => s + t.net, 0));
+
+/** The capital the run is sized against. Every percentage is relative to this,
+ *  so a currency figure and its percentage cannot disagree. */
+export const startingCapital = 25000;
+
+// Peak-to-trough on the same cumulative series the equity curve draws. This was
+// a hardcoded 1639.50 / 0.16%, which implied a $1.02M account while the run
+// netted $1,813 over 62 trades — a reader who knows the instrument spots that
+// instantly.
+const drawdown = (() => {
+  let peak = 0;
+  let worst = 0;
+  let worstPct = 0;
+  for (const t of trades) {
+    if (t.cum > peak) peak = t.cum;
+    const fall = peak - t.cum;
+    if (fall > worst) {
+      worst = fall;
+      worstPct = (fall / (startingCapital + peak)) * 100;
+    }
+  }
+  return { abs: Math.round(worst * 100) / 100, pct: Math.round(worstPct * 100) / 100 };
+})();
 
 export const summary = {
   symbol: "XAUUSD",
@@ -199,11 +246,24 @@ export const summary = {
   winRate: (wins.length / trades.length) * 100,
   wins: wins.length,
   losses: losses.length,
-  maxDrawdown: 1639.5,
-  maxDrawdownPct: 0.16,
+  maxDrawdown: drawdown.abs,
+  maxDrawdownPct: drawdown.pct,
   profitFactor: grossProfit / grossLoss,
   openPnl: 0,
 };
+
+// Runs on every dev boot. These aggregates are shown side by side, so a reader
+// can subtract one from another — if they ever stop agreeing, the screen is
+// lying and it should fail here rather than in front of someone.
+if (import.meta.env.DEV) {
+  const weekdaySum = weekdayPnl.reduce((s, d) => s + d.value, 0);
+  if (Math.abs(weekdaySum - summary.netProfit) > 0.5)
+    throw new Error(`weekday P&L sums to ${weekdaySum}, net profit is ${summary.netProfit}`);
+  if (Math.abs(grossProfit - grossLoss - summary.netProfit) > 0.5)
+    throw new Error(`gross ${grossProfit} - ${grossLoss} does not equal net ${summary.netProfit}`);
+  if (summary.wins + summary.losses !== summary.trades)
+    throw new Error(`wins + losses does not equal ${summary.trades}`);
+}
 
 export const metrics: { label: string; value: string; tone?: "profit" | "loss" }[] = [
   { label: "Net Profit", value: `+${summary.netProfit.toFixed(2)} USD`, tone: "profit" },

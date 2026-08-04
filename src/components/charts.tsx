@@ -166,6 +166,19 @@ function Axis({ ticks, fmtT }: { ticks: number[]; fmtT: (n: number) => string })
   );
 }
 
+/**
+ * Round an axis bound up to a 1 / 2 / 2.5 / 5 × 10ⁿ step. Taking the bound
+ * straight off the data labels the axis with whatever the largest bar happened
+ * to be — the weekday chart read 788 and -788, which looks like a measurement
+ * rather than a scale.
+ */
+function niceMax(v: number) {
+  if (!(v > 0) || !Number.isFinite(v)) return 1;
+  const mag = 10 ** Math.floor(Math.log10(v));
+  const f = v / mag;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag;
+}
+
 /** Category-indexed bars — used by Weekday Performance, which is in the PARITY set. */
 export function CategoryBars({
   data,
@@ -176,7 +189,7 @@ export function CategoryBars({
   yLabel: string;
   apolloId: string;
 }) {
-  const max = Math.max(...data.map((d) => Math.abs(d.value))) || 1;
+  const max = niceMax(Math.max(...data.map((d) => Math.abs(d.value))) || 1);
   const zero = PAD.t + plotH / 2;
   const bw = plotW / data.length;
   return (

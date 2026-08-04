@@ -8,13 +8,23 @@ Each image is `docs/reference/<frame>` on the left and our render on the right, 
 > corrected — a gate artifact that disagrees with the build is worse than no artifact, because it
 > is trusted. If you changed anything visual and did not re-shoot, this folder is lying.
 
-Regenerate (dev server running on 5199):
+Regenerate all seven:
 
 ```bash
-SEED=1 node scripts/shoot.mjs <out.png> [data-apollo-id selectors to click ...]
+npm run dev                       # serves on 5199
+node scripts/parity.mjs           # or: node scripts/parity.mjs p5-backtest
 ```
 
-then pair each with its reference frame via the `ffmpeg` hstack recorded in the build history.
+`parity.mjs` owns the state each sheet is shot in and the pairing with its reference frame. It
+needs Chrome listening for CDP on 9333:
+
+```bash
+chrome --remote-debugging-port=9333 --user-data-dir=<scratch> --window-size=1920,1080
+```
+
+This used to be a paragraph asking the next person to run `shoot.mjs` seven times and hstack the
+results by hand. That is how the folder went stale the first time — an instruction that takes seven
+manual steps is one that gets skipped when the change feels small.
 
 | Sheet | Reference frame | Verdict |
 |---|---|---|

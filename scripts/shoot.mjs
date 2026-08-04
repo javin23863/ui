@@ -2,21 +2,29 @@
 // resolution every reference frame was captured at (§11 parity gate).
 // Usage: node scripts/shoot.mjs <out.png> [clickSelector ...]
 import { writeFileSync } from "node:fs";
-import { WebSocket } from "node:http";
 
 const [, , out, ...clicks] = process.argv;
 const PORT = 9333;
 const URL_ = `http://localhost:5199/${process.env.SEED ? "?seed=1" : ""}`;
 
-const rest = async (p) => (await fetch(`http://127.0.0.1:${PORT}${p}`)).json();
+const rest = async (p, method = "GET") => {
+  const res = await fetch(`http://127.0.0.1:${PORT}${p}`, { method });
+  const body = await res.text();
+  if (!res.ok) throw new Error(`CDP ${method} ${p} → ${res.status}: ${body.slice(0, 200)}`);
+  return JSON.parse(body);
+};
 
 const targets = await rest("/json/list");
 let page = targets.find((t) => t.type === "page" && t.url.includes("localhost:5199"));
 if (!page) {
-  await rest(`/json/new?${encodeURIComponent(URL_)}`);
+  // Chrome has required PUT on /json/new since 111; a GET returns a plain-text
+  // error, so parsing it as JSON fails with a stack trace that says nothing
+  // about the real cause.
+  await rest(`/json/new?${encodeURIComponent(URL_)}`, "PUT");
   await new Promise((r) => setTimeout(r, 1500));
   page = (await rest("/json/list")).find((t) => t.type === "page" && t.url.includes("5199"));
 }
+if (!page) throw new Error("no dev-server page in Chrome — is the dev server up on 5199?");
 
 const { default: WS } = await import("ws").catch(() => ({ default: null }));
 if (!WS) {
