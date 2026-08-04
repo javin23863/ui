@@ -145,6 +145,12 @@ from:
 The equity area gradient and the two EMA polarity colours are applied at their draw sites from
 `--color-profit` / `--color-loss` rather than aliased here — one fewer name to keep in sync.
 
+**Naming, so shorthand is not mistaken for a missing token.** The block above is the complete set;
+nothing else is defined. Prose elsewhere in this document writes `--profit`, `--loss`, `--accent`,
+`--border` and so on as shorthand for the `--color-`-prefixed token of that name. If a reference
+appears that does *not* resolve to a row above, it is a defect in this document — the token set
+does not grow to match the prose.
+
 **One cascade rule that is not optional.** Base element styles must sit inside `@layer base`:
 
 ```css
@@ -429,8 +435,10 @@ Single row of chips, 32px tall, `--bg-panel`, radius 6px:
 - **Signal markers:** small solid triangles above/below the bar, `--profit` up / `--loss` down.
 - **Zone boxes:** semi-transparent rects spanning a bar range (accumulation grey, manipulation
   yellow, FVG green/red, IFVG teal/orange in the reference). Fill only, no stroke.
-- **EMA trend line:** 2px, color-switching by slope — `--ema-bull` / `--ema-bear`, drawn as a single
-  polyline with per-segment color.
+- **EMA trend line:** 2px, one polyline whose stroke switches per segment by slope — rising takes
+  `--color-profit`, falling takes `--color-loss`. There are no separate `--ema-*` tokens; the
+  polarity colours *are* the semantics, and aliasing them would be a second name to keep in sync.
+  A line series cannot carry per-segment colour, so this is drawn in the SVG overlay (§6a).
 
 ### Trade visualization (strategy mode — `04-chart-trades-summary-dock.png`)
 
@@ -493,7 +501,10 @@ Tabs, 13px, underline-on-active (2px `--text-primary`, only under the label widt
 
 #### Equity curve (top block, ~255px tall)
 
-- **Area series**, line `--profit` 2px, fill `--equity-fill` gradient to transparent
+- **Area series**, line `--color-profit` 2px, fill
+  `linear-gradient(180deg, rgba(14,158,143,0.26), rgba(14,158,143,0.02))` — the gradient is applied
+  at the draw site rather than aliased to a token, since it is a composite value Tailwind should
+  not build a utility from
 - Segments where cumulative P&L < 0 are drawn `--loss` (line *and* fill) — see the red opening
   segment in `05`
 - Right price axis, ~8 ticks, includes a negative tick below the zero line, 10px `--text-muted`
