@@ -10,33 +10,19 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
-## ▶ UI build — SPEC MERGED, UI BUILT AND IN REVIEW
-
-**As of 2026-08-05.**
+## UI build — MERGED TO MAIN 2026-08-05
 
 | | |
 |---|---|
 | Spec | `docs/UI-PARITY-SPEC.md` — read it; this file does not restate it |
-| `main` | carries the spec and `docs/reference/`. **No `src/` yet** — that arrives with PR #2 |
-| PR #1 | `docs/ui-parity-spec` → **MERGED** |
-| PR #2 | `feat/ui-build` → open, retargeted to `main`, in review |
-| Board card | `consumer.ui-parity-spec` under `cap.consumer-shell`, **verify** |
+| `main` | carries **everything**: spec, `src/`, `scripts/`, `docs/parity/`, `docs/reference/` |
+| PR #1 | `docs/ui-parity-spec` → MERGED |
+| PR #2 | `feat/ui-build` → **MERGED** at `7fefff7`, Greptile 5/5 with zero findings at that head |
+| Board card | `consumer.ui-parity-spec` under `cap.consumer-shell`, **verify** — operator moves to done |
 
-> ### Which branch am I on?
->
-> **This file is checked in on both branches and describes both.** Nothing below runs from `main`
-> until PR #2 lands.
->
-> | | `main` | `feat/ui-build` (PR #2) |
-> |---|---|---|
-> | `docs/UI-PARITY-SPEC.md`, `docs/reference/` | yes | yes |
-> | `package.json`, `src/`, `scripts/`, `docs/parity/` | **not yet** | yes |
-> | `npm i && npm run dev` | **cannot run** | runs → http://localhost:5199 |
->
-> If `ls package.json` fails you are on `main`. Everything in *What is built*, *Gates* and
-> *Runbook* below refers to `feat/ui-build`.
+`npm i && npm run dev` → http://localhost:5199.
 
-### What is built — on `feat/ui-build` only
+### What is built
 
 Shell · chat pane with markdown transcript and voice dictation · chart pane · Pine code view ·
 collapsed backtest dock · expanded backtest panel · `Trades Analysis` · `Trades Log` ·
@@ -46,7 +32,7 @@ Everything renders from `src/fixtures/market.ts`, seeded so screenshots are repr
 **No LLM, no Pine compilation, no market data, no backtest engine** — capabilities are out of scope
 by design, so the chat reply is a scripted fixture that does not respond to what you type.
 
-### Gates — green on `feat/ui-build`
+### Gates — green on `main`
 
 ```
 npm run check:palette     # reads hexes out of src/tokens.css, 20/20
@@ -85,25 +71,39 @@ on §11's terms.
 
 ### Runbook — next steps, in order
 
-1. Clear Greptile on PR #2, then merge it to `main`. Check with
-   `node scripts/findings.mjs 2 feat/ui-build` — it prints whether the newest round actually
-   reviewed the current head, so a stale round cannot read as a pass.
-2. Operator moves the board card `verify → done`. Only the operator does this.
-3. Steps below need `feat/ui-build`. Start the dev server for screenshots: `npm run dev`, then
-   `SEED=1 node scripts/shoot.mjs <out.png> [clickSelector ...]`.
+1. Operator moves the board card `verify → done`. Only the operator does this.
+2. Start the dev server for screenshots: `npm run dev`, then
+   `SEED=1 node scripts/shoot.mjs <out.png> [clickSelector ...]`, which needs Chrome on CDP 9333
+   (`chrome --remote-debugging-port=9333 --user-data-dir=<scratch> --window-size=1920,1080`).
    `node scripts/probe.mjs "<js>"` reads computed style off the running page — use it when
    something looks wrong but the source looks right.
 
+> **Reading a Greptile verdict — this cost an hour on 2026-08-05.** A CLEAN pass creates **no
+> review object and no inline comments**, so polling `pulls/N/reviews` for one waits forever on a
+> PR that already passed. The only always-updating surface is the PR body:
+> `gh pr view N --json body -q '.body' | grep -o "Reviews ([0-9]*): Last reviewed commit"`.
+> PASS = that commit equals the head AND zero comments anchored to it.
+> **Auto-review also stops after ~7 rounds** — the body carries a `Re-trigger Greptile` link that
+> works over plain `curl -L`. Four unreviewed pushes looked exactly like latency.
+> `node scripts/findings.mjs <pr> <branch>` reports the FAIL side; it cannot see a pass.
+
 ### Open — do not re-derive these either
 
-Six unknowns in §12. Two block full sign-off on the Performance tab:
+Six unknowns in §12. **Gaps 1 and 2 are now closed as UNRECOVERABLE, not merely unobserved** — a
+second full capture pass over both videos at native 1080p (2026-08-05) established:
 
-- The metrics table below the fold — only `Net Profit` and `Open PnL` are legible in the footage;
-  the third row is partly visible (`~12.45%`). Full row list unknown.
-- `Weekday Performance` card's right edge is webcam-occluded in **every** frame. Width and whether
-  it has its own filter row are inferred.
+- The metrics panel appears only in `oxZj1kSye-g`, is on screen from 19:10 to the end at 33:06, and
+  is **never scrolled, resized or expanded** in that entire span. `Net Profit` and `Open PnL` are
+  the only labelled rows; a third row is cut by the recording's own bottom edge at y=1080, leaving
+  glyph tips no crop can recover. **Do not invent rows here.**
+- The webcam **never moves** off the `Weekday Performance` card — fixed position in 100% of ~35
+  sampled frames across the card's whole on-screen life. Mon–Sat are permanently occluded.
+  One fact did come out: a control-shaped `All` sits under that card's legend with nothing at the
+  same position under `Net Daily PNL`, so the control belongs to that card. Shipped as
+  `All / Long / Short` on the strength of *a control being there*, not of it being a filter.
 
-Closing either needs another capture pass or one screenshot from a logged-in session.
+**Another capture pass will not help.** Only a screenshot from a logged-in session moves these.
+Gaps 3–6 remain genuinely open.
 
 ### Stated ceilings
 
