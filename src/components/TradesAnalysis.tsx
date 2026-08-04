@@ -22,7 +22,12 @@ export default function TradesAnalysis() {
 
   const rows = useMemo(() => (profile === "thin" ? trades.slice(0, 11) : trades), [profile]);
   const costsModelled = profile !== "no-costs";
-  const hasHoldout = profile !== "no-holdout";
+  // Declared by the run AND actually populated. The thin-sample profile declares
+  // a holdout that no trade lands in, and the panel rendered 0.00 / 0.0% / a
+  // −54.5 pp delta against it — reporting that the strategy scored zero out of
+  // sample when the truth is it was never tested there. A guard that reads the
+  // declaration instead of the data cannot catch that.
+  const declaresHoldout = profile !== "no-holdout";
   const hasRegimes = profile !== "no-regimes";
 
   const net = rows.reduce((s, t) => s + t.net, 0);
@@ -49,6 +54,7 @@ export default function TradesAnalysis() {
   };
   const isS = stat(is);
   const oosS = stat(oos);
+  const hasHoldout = declaresHoldout && oosS.n > 0 && isS.n > 0;
 
   const regimes = useMemo(() => {
     const map = new Map<string, typeof rows>();
@@ -179,7 +185,9 @@ export default function TradesAnalysis() {
             </>
           ) : (
             <Refusal>
-              No out-of-sample period declared for this run. A split invented at display time is not a holdout.
+              {declaresHoldout
+                ? `A holdout is declared but no trade falls in it — ${isS.n} in-sample, ${oosS.n} out-of-sample. There is no out-of-sample result to compare against, which is not the same as one that came out flat.`
+                : "No out-of-sample period declared for this run. A split invented at display time is not a holdout."}
             </Refusal>
           )}
         </Card>
