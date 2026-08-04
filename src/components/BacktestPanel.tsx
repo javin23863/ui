@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Minimize2, Star } from "lucide-react";
 import { CategoryBars, DailyPnl, EquityCurve } from "./charts";
 import { AssetBadge, Card, cx, KpiStrip, Legend, Signed } from "../ui";
-import { dailyPnl, equity, metrics, summary, weekdayPnl } from "../fixtures/market";
+import { dailyPnl, equity, metricsFor, type SideFilter, summary, weekdayPnlFor } from "../fixtures/market";
 import TradesAnalysis from "./TradesAnalysis";
 import TradesLog from "./TradesLog";
 
@@ -91,6 +91,11 @@ export default function BacktestPanel({
 }
 
 function Performance() {
+  // Two independent slices — the weekday card and the metrics table each carry
+  // their own control in the reference, so neither drives the other.
+  const [metricsSide, setMetricsSide] = useState<SideFilter>("All");
+  const [weekdaySide, setWeekdaySide] = useState<SideFilter>("All");
+
   return (
     <>
       <div className="pt-2">
@@ -105,27 +110,21 @@ function Performance() {
           <Legend items={[{ label: "Profit", color: "var(--color-profit)" }, { label: "Loss", color: "var(--color-loss)" }]} />
         </Card>
         <Card title="Weekday Performance (USD)">
-          <CategoryBars data={weekdayPnl} yLabel="Weekday P&L" apolloId="weekday-performance" />
+          <CategoryBars data={weekdayPnlFor(weekdaySide)} yLabel="Weekday P&L" apolloId="weekday-performance" />
           <Legend items={[{ label: "Profit", color: "var(--color-profit)" }, { label: "Loss", color: "var(--color-loss)" }]} />
+          {/* The reference carries a control-shaped "All" under this card's
+              legend and nothing at the same spot under Net Daily PNL, so the
+              control belongs to this card (§12.2). */}
+          <SideTabs value={weekdaySide} onChange={setWeekdaySide} idPrefix="weekday-filter" center />
         </Card>
       </div>
 
       <div className="mt-5">
         <div className="flex justify-end pb-1">
-          <div className="flex gap-1 text-[11px]">
-            {["All", "Long", "Short"].map((f, i) => (
-              <button
-                key={f}
-                data-apollo-id={`metrics-filter-${f.toLowerCase()}`}
-                className={cx("rounded px-2 py-0.5", i === 0 ? "bg-bg-elevated text-text-primary" : "text-text-muted hover:text-text-primary")}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+          <SideTabs value={metricsSide} onChange={setMetricsSide} idPrefix="metrics-filter" />
         </div>
         <dl>
-          {metrics.map((m) => (
+          {metricsFor(metricsSide).map((m) => (
             <div key={m.label} className="flex items-center justify-between border-t border-border py-2">
               <dt className="text-[13px]">{m.label}</dt>
               <dd className={cx("tnum text-[13px]", m.tone === "profit" && "text-profit", m.tone === "loss" && "text-loss")}>{m.value}</dd>
@@ -134,5 +133,42 @@ function Performance() {
         </dl>
       </div>
     </>
+  );
+}
+
+/**
+ * All / Long / Short. These buttons used to be static markup with the first one
+ * permanently styled active and no handler at all — a control that looks like it
+ * filters and does not is worse than no control, because the reader trusts the
+ * number beside it.
+ */
+function SideTabs({
+  value,
+  onChange,
+  idPrefix,
+  center,
+}: {
+  value: SideFilter;
+  onChange: (v: SideFilter) => void;
+  idPrefix: string;
+  center?: boolean;
+}) {
+  return (
+    <div className={cx("flex gap-1 text-[11px]", center && "justify-center pt-1")} role="group">
+      {(["All", "Long", "Short"] as const).map((f) => (
+        <button
+          key={f}
+          data-apollo-id={`${idPrefix}-${f.toLowerCase()}`}
+          aria-pressed={value === f}
+          onClick={() => onChange(f)}
+          className={cx(
+            "rounded px-2 py-0.5",
+            value === f ? "bg-bg-elevated text-text-primary" : "text-text-muted hover:text-text-primary",
+          )}
+        >
+          {f}
+        </button>
+      ))}
+    </div>
   );
 }

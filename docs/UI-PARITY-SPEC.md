@@ -849,18 +849,33 @@ A panel that renders a number for every one of these inputs has failed. Passing 
 
 These are unknowns, not decisions. Nothing below should be invented into the build.
 
-1. **Metrics table below the fold** (Performance tab) — only `Net Profit` and `Open PnL` are
-   legible; the third row is partly visible (`~12.45%`, likely a return or drawdown percentage).
-   The full row list is unknown. **Still a parity gap** — this table is in the reference.
-2. **Weekday Performance card, right edge** — occluded by the webcam in every frame. Card width
-   and whether it has its own filter row are inferred.
+1. **Metrics table below the fold** (Performance tab) — **CLOSED as unrecoverable, 2026-08-05.**
+   A full second capture pass over both videos at native 1080p settles it: the panel appears only
+   in `oxZj1kSye-g`, from 19:10 to the end at 33:06, and in that entire span it is **never
+   scrolled, resized, or expanded** — the vertical position of every row is pixel-identical across
+   the whole 13 minutes. `Net Profit` and `Open PnL` are the only labelled rows. A third row
+   exists in every frame but is cut by the recording's own bottom edge at y=1080, leaving glyph
+   tips; no crop or upscale recovers pixels that were never captured. Its value renders as a plain
+   (non-P&L-coloured) percentage — that is all that can be said. **Do not invent rows here.**
+   Only a screenshot from a logged-in session can close this, and it is not a capture problem.
+2. **Weekday Performance card, right edge** — **CLOSED as unrecoverable, same pass.** The webcam
+   overlay holds one fixed position (≈x 1420–1920, y 650–1080) in 100% of ~35 sampled frames
+   across the card's entire on-screen lifetime. It never moves, shrinks, or disappears, so Mon–Sat
+   are permanently occluded.
+   **One new fact did come out of it:** a control-shaped **`All`** label sits directly under that
+   card's legend, and the sibling `Net Daily PNL` card has nothing at the same position — so the
+   control belongs to the Weekday card specifically. It is never clicked or hovered on camera,
+   so *that it is a filter* is inference; *that a control-shaped label is there and is unique to
+   this card* is observed. §8b implements it as `All / Long / Short` on the strength of the
+   second fact, not the first.
 3. **Left-rail icon meanings** — glyphs are legible, labels are not. Names in §3 are inferred.
 4. **Timeframe dropdown** — never opened.
 5. **Light theme** — does not appear to exist. Not built.
 6. **Responsive behaviour** — every frame is 1920×1080. Breakpoints are our choice, not parity.
 
-Fastest way to close 1–2: another capture pass, or a screenshot from the operator's own logged-in
-session.
+1–2 are now closed against the footage: the second pass proved the information is **not in the
+source at any resolution**, which is a different and more useful answer than "not yet looked for".
+Only a screenshot from a logged-in session can move them. 3–6 remain open.
 
 **Closed by decision, not by evidence:** the `Trades Analysis` and `Trades Log` tabs were gaps 1–2
 in v1 of this spec. They are no longer gaps — operator ruling 2026-08-05: build them as ours (§8c,

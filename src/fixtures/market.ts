@@ -93,9 +93,13 @@ export function candlesFor(symbol: string, timeframe = "4h"): Candle[] {
   let px = base;
   let t = START;
   for (let i = 0; i < 420; i++) {
-    const drift = Math.sin(i / 38) * vol * 1.4 + (i > 300 ? vol * 0.5 : vol * 0.05);
+    // Drift is deliberately weak against the noise. An earlier series carried a
+    // strong sine trend plus a late bias, and any rule run over it came out at a
+    // 72% win rate and a profit factor near 6 — numbers that make a demo look
+    // like a scam to the one audience that matters here.
+    const drift = Math.sin(i / 38) * vol * 0.9 + (i > 300 ? vol * 0.15 : vol * 0.05);
     const open = px;
-    const close = open + drift + (r() - 0.5) * vol * 9;
+    const close = open + drift + (r() - 0.5) * vol * 14;
     const high = Math.max(open, close) + r() * vol * 4.5;
     const low = Math.min(open, close) - r() * vol * 4.5;
     out.push({ time: t, open, high, low, close });
@@ -151,42 +155,94 @@ export const tradeZone = {
   stop: candles[268].high + 22,
 };
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Dollars at risk per trade — what 1R means everywhere below. */
+const RISK = 300;
+
+/**
+ * The trades are RUN over the candle series rather than invented alongside it,
+ * so every column reconciles with the ones next to it: gross is
+ * (exit − entry) × qty × direction, R is gross over the risk above, and MAE/MFE
+ * are the actual worst and best excursions between the entry and exit bars.
+ *
+ * They used to come from independent random draws. A reader checking a single
+ * row found a short entered at 3968.59 and exited at 4151.57 on qty 10 —
+ * a 1,829.80 loss — reported as −210.72. §8d calls this tab an auditable
+ * ledger; the one thing it must survive is somebody auditing it.
+ */
 export const trades: Trade[] = (() => {
   const r = rng(7);
+  const trend = emaFor(candles);
+  const QTY = 10;
   const out: Trade[] = [];
   let cum = 0;
-  for (let i = 1; i <= 62; i++) {
-    const side = r() > 0.46 ? "Long" : "Short";
-    const win = r() > 0.58;
-    const rMult = win ? 0.6 + r() * 2.4 : -(0.5 + r() * 0.7);
-    const gross = Math.round(rMult * 178 * 100) / 100;
-    const costs = Math.round(-(6 + r() * 12) * 100) / 100;
-    const net = Math.round((gross + costs) * 100) / 100;
-    cum = Math.round((cum + net) * 100) / 100;
-    const ei = Math.min(candles.length - 30, 8 + i * 6);
-    const bars = 6 + Math.floor(r() * 40);
+  // Entry is the rule the chat transcript on the left of the screen describes:
+  // a bullish sweep takes out the previous low and closes above its high, a
+  // bearish sweep the mirror. Anything else and the narrative and the ledger are
+  // describing two different strategies.
+  const signals: { i: number; dir: 1 | -1 }[] = [];
+  for (let i = 1; i < candles.length - 10; i++) {
+    const c = candles[i];
+    const p = candles[i - 1];
+    if (c.low < p.low && c.close > p.high) signals.push({ i, dir: 1 });
+    else if (c.high > p.high && c.close < p.low) signals.push({ i, dir: -1 });
+  }
+
+  let n = 0;
+  for (const sig of signals) {
+    if (++n > 62) break;
+    const ei = sig.i;
+    const bars = 2 + Math.floor(r() * 7);
+    const xi = Math.min(candles.length - 1, ei + bars);
+    const dir = sig.dir;
+    const slope = trend[ei].value - trend[Math.max(0, ei - 6)].value;
+
+    const entryPx = round2(candles[ei].close);
+    const exitPx = round2(candles[xi].close);
+    const gross = round2((exitPx - entryPx) * dir * QTY);
+    const costs = round2(-(6 + r() * 12));
+    const net = round2(gross + costs);
+    cum = round2(cum + net);
+
+    const span = candles.slice(ei, xi + 1);
+    const lo = Math.min(...span.map((c) => c.low));
+    const hi = Math.max(...span.map((c) => c.high));
+    const adverse = dir === 1 ? lo - entryPx : entryPx - hi;
+    const favourable = dir === 1 ? hi - entryPx : entryPx - lo;
+
     out.push({
-      n: i,
-      side,
+      n,
+      side: dir === 1 ? "Long" : "Short",
       entryTime: candles[ei].time,
-      exitTime: candles[Math.min(candles.length - 1, ei + bars)].time,
-      bars,
-      qty: 10,
-      entryPx: Math.round(candles[ei].close * 100) / 100,
-      exitPx: Math.round(candles[Math.min(candles.length - 1, ei + bars)].close * 100) / 100,
+      exitTime: candles[xi].time,
+      bars: xi - ei,
+      qty: QTY,
+      entryPx,
+      exitPx,
       gross,
       costs,
       net,
-      r: Math.round(rMult * 100) / 100,
-      mae: -Math.round(r() * 90) / 100,
-      mfe: Math.round((Math.max(rMult, 0.1) + r() * 0.8) * 100) / 100,
+      r: round2(gross / RISK),
+      mae: round2(Math.min(0, adverse) * QTY / RISK),
+      mfe: round2(Math.max(0, favourable) * QTY / RISK),
       cum,
-      regime: ["Trend up", "Trend down", "Range", "High volatility"][Math.floor(r() * 4)],
-      sample: i > 44 ? "OOS" : "IS",
+      regime: regimeAt(entryPx, slope, hi - lo),
+      // Last 30% of the run is held back. Derived from the count so the split
+      // cannot drift when the signal count changes.
+      sample: n > Math.ceil(Math.min(signals.length, 62) * 0.7) ? "OOS" : "IS",
     });
   }
   return out;
 })();
+
+/** Named from what the bars did, not drawn from a hat. */
+function regimeAt(px: number, slope: number, range: number): string {
+  if (range > px * 0.02) return "High volatility";
+  if (slope > px * 0.002) return "Trend up";
+  if (slope < -px * 0.002) return "Trend down";
+  return "Range";
+}
 
 export const equity = trades.map((t) => ({ time: t.entryTime, value: t.cum, n: t.n, side: t.side }));
 
@@ -198,57 +254,85 @@ export const dailyPnl = trades.map((t) => ({ time: t.entryTime, value: t.net }))
 // label that moves without its data.
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export const weekdayPnl = WEEKDAYS.map((label, day) => ({
-  label,
-  value:
-    Math.round(
-      trades
-        .filter((t) => new Date(t.entryTime * 1000).getUTCDay() === day)
-        .reduce((s, t) => s + t.net, 0) * 100,
-    ) / 100,
-}));
-
-const wins = trades.filter((t) => t.net > 0);
-const losses = trades.filter((t) => t.net <= 0);
-const grossProfit = wins.reduce((s, t) => s + t.net, 0);
-const grossLoss = Math.abs(losses.reduce((s, t) => s + t.net, 0));
-
 /** The capital the run is sized against. Every percentage is relative to this,
  *  so a currency figure and its percentage cannot disagree. */
 export const startingCapital = 25000;
 
-// Peak-to-trough on the same cumulative series the equity curve draws. This was
-// a hardcoded 1639.50 / 0.16%, which implied a $1.02M account while the run
-// netted $1,813 over 62 trades — a reader who knows the instrument spots that
-// instantly.
-const drawdown = (() => {
+export type SideFilter = "All" | "Long" | "Short";
+
+const bySide = (side: SideFilter) => (side === "All" ? trades : trades.filter((t) => t.side === side));
+
+export function weekdayPnlFor(side: SideFilter = "All") {
+  const rows = bySide(side);
+  return WEEKDAYS.map((label, day) => ({
+    label,
+    value: round2(
+      rows.filter((t) => new Date(t.entryTime * 1000).getUTCDay() === day).reduce((s, t) => s + t.net, 0),
+    ),
+  }));
+}
+
+export const weekdayPnl = weekdayPnlFor();
+
+/**
+ * Everything the metrics table and the KPI strip report, for whatever slice of
+ * the ledger is selected. Peak-to-trough runs over that slice's own cumulative
+ * series rather than the whole run's, so filtering to Long does not quietly keep
+ * showing the drawdown a short caused.
+ */
+function statsFor(rows: typeof trades) {
+  const wins = rows.filter((t) => t.net > 0);
+  const losses = rows.filter((t) => t.net <= 0);
+  const grossProfit = wins.reduce((s, t) => s + t.net, 0);
+  const grossLoss = Math.abs(losses.reduce((s, t) => s + t.net, 0));
+  const netProfit = round2(rows.reduce((s, t) => s + t.net, 0));
+
+  let cum = 0;
   let peak = 0;
   let worst = 0;
   let worstPct = 0;
-  for (const t of trades) {
-    if (t.cum > peak) peak = t.cum;
-    const fall = peak - t.cum;
+  for (const t of rows) {
+    cum = round2(cum + t.net);
+    if (cum > peak) peak = cum;
+    const fall = peak - cum;
     if (fall > worst) {
       worst = fall;
       worstPct = (fall / (startingCapital + peak)) * 100;
     }
   }
-  return { abs: Math.round(worst * 100) / 100, pct: Math.round(worstPct * 100) / 100 };
-})();
+
+  return {
+    wins: wins.length,
+    losses: losses.length,
+    trades: rows.length,
+    grossProfit,
+    grossLoss,
+    netProfit,
+    winRate: rows.length ? (wins.length / rows.length) * 100 : 0,
+    profitFactor: grossLoss ? grossProfit / grossLoss : 0,
+    maxDrawdown: round2(worst),
+    maxDrawdownPct: round2(worstPct),
+    avgBars: rows.length ? rows.reduce((s, t) => s + t.bars, 0) / rows.length : 0,
+  };
+}
+
+const all = statsFor(trades);
+const { grossProfit, grossLoss } = all;
+const drawdown = { abs: all.maxDrawdown, pct: all.maxDrawdownPct };
 
 export const summary = {
   symbol: "XAUUSD",
   timeframe: "4h",
   strategy: "Sweep and Engulf Strategy",
   rangeLabel: "Jun 4, 2023 – Jul 15, 2026",
-  netProfit: trades.at(-1)!.cum,
-  trades: trades.length,
-  winRate: (wins.length / trades.length) * 100,
-  wins: wins.length,
-  losses: losses.length,
+  netProfit: all.netProfit,
+  trades: all.trades,
+  winRate: all.winRate,
+  wins: all.wins,
+  losses: all.losses,
   maxDrawdown: drawdown.abs,
   maxDrawdownPct: drawdown.pct,
-  profitFactor: grossProfit / grossLoss,
+  profitFactor: all.profitFactor,
   openPnl: 0,
 };
 
@@ -265,16 +349,29 @@ if (import.meta.env.DEV) {
     throw new Error(`wins + losses does not equal ${summary.trades}`);
 }
 
-export const metrics: { label: string; value: string; tone?: "profit" | "loss" }[] = [
-  { label: "Net Profit", value: `+${summary.netProfit.toFixed(2)} USD`, tone: "profit" },
-  { label: "Open PnL", value: "0.00 USD" },
-  { label: "Gross Profit", value: `+${grossProfit.toFixed(2)} USD`, tone: "profit" },
-  { label: "Gross Loss", value: `-${grossLoss.toFixed(2)} USD`, tone: "loss" },
-  { label: "Max Drawdown", value: `${summary.maxDrawdown.toFixed(2)} USD` },
-  { label: "Profit Factor", value: summary.profitFactor.toFixed(3), tone: "profit" },
-  { label: "Avg Trade", value: `${(summary.netProfit / summary.trades).toFixed(2)} USD` },
-  { label: "Avg Bars Held", value: (trades.reduce((s, t) => s + t.bars, 0) / trades.length).toFixed(1) },
-];
+export type Metric = { label: string; value: string; tone?: "profit" | "loss" };
+
+// The sign and the colour both come from the number. Net Profit used to carry a
+// literal "+" and a permanent profit tone, so a slice that lost money would have
+// rendered "+-412.80 USD" in green.
+const money = (n: number) => `${n >= 0 ? "+" : "−"}${Math.abs(n).toFixed(2)} USD`;
+const tone = (n: number): "profit" | "loss" => (n >= 0 ? "profit" : "loss");
+
+export function metricsFor(side: SideFilter = "All"): Metric[] {
+  const s = statsFor(bySide(side));
+  return [
+    { label: "Net Profit", value: money(s.netProfit), tone: tone(s.netProfit) },
+    { label: "Open PnL", value: "0.00 USD" },
+    { label: "Gross Profit", value: money(s.grossProfit), tone: "profit" },
+    { label: "Gross Loss", value: `−${s.grossLoss.toFixed(2)} USD`, tone: "loss" },
+    { label: "Max Drawdown", value: `${s.maxDrawdown.toFixed(2)} USD` },
+    { label: "Profit Factor", value: s.profitFactor.toFixed(3), tone: tone(s.profitFactor - 1) },
+    { label: "Avg Trade", value: s.trades ? money(s.netProfit / s.trades) : "—" },
+    { label: "Avg Bars Held", value: s.trades ? s.avgBars.toFixed(1) : "—" },
+  ];
+}
+
+export const metrics = metricsFor();
 
 export const pineSource = `// This Pine Script® code is subject to the Mozilla Public License 2.0
 // © TraderCockpit
@@ -316,6 +413,13 @@ if bullSweep and trendOk(true) and strategy.position_size == 0
     targetPrice := entryPrice + (entryPrice - stopPrice) * rr
     strategy.entry("Long", strategy.long)
     strategy.exit("Exit Long", "Long", stop = stopPrice, limit = targetPrice)
+
+if bearSweep and trendOk(false) and strategy.position_size == 0
+    entryPrice  := close
+    stopPrice   := slMethod == "ATR" ? close + atr * atrMult : high
+    targetPrice := entryPrice - (stopPrice - entryPrice) * rr
+    strategy.entry("Short", strategy.short)
+    strategy.exit("Exit Short", "Short", stop = stopPrice, limit = targetPrice)
 
 plot(useEma ? ema200 : na, "EMA Trend", color = close > ema200 ? color.teal : color.red, linewidth = 2)
 `;

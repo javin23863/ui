@@ -134,24 +134,48 @@ export default function TradesAnalysis() {
                 <div className="text-text-muted">Δ</div>
                 {(
                   [
-                    ["Net", isS.net, oosS.net, (v: number) => <Signed value={v} />],
-                    ["Win rate", isS.win, oosS.win, (v: number) => <span className="tnum">{v.toFixed(1)}%</span>],
-                    ["Profit factor", isS.pf, oosS.pf, (v: number) => <span className="tnum">{v.toFixed(2)}</span>],
-                    ["Trades", isS.n, oosS.n, (v: number) => <span className="tnum">{v}</span>],
-                  ] as const
-                ).map(([label, a, b, render]) => (
-                  <div key={label} className="contents">
-                    <div className="border-t border-border py-1.5">{label}</div>
-                    <div className="border-t border-border py-1.5">{render(a as number)}</div>
-                    <div className="border-t border-border py-1.5">{render(b as number)}</div>
-                    <div className={cx("tnum border-t border-border py-1.5", (b as number) < (a as number) ? "text-loss" : "text-profit")}>
-                      {(b as number) - (a as number) > 0 ? "+" : "−"}
-                      {Math.abs((b as number) - (a as number)).toFixed(label === "Trades" ? 0 : 2)}
+                    { label: "Net", a: isS.net, b: oosS.net, render: (v: number) => <Signed value={v} />, dp: 2 },
+                    // A win-rate gap is in percentage POINTS. Rendering it as a
+                    // bare number next to two values carrying % invites reading
+                    // it as a percentage change, which is a different quantity.
+                    { label: "Win rate", a: isS.win, b: oosS.win, render: (v: number) => <span className="tnum">{v.toFixed(1)}%</span>, dp: 1, unit: " pp" },
+                    { label: "Profit factor", a: isS.pf, b: oosS.pf, render: (v: number) => <span className="tnum">{v.toFixed(2)}</span>, dp: 2 },
+                    // How the run was split, not how it performed. Colouring the
+                    // smaller holdout red reads as a result getting worse.
+                    { label: "Trades", a: isS.n, b: oosS.n, render: (v: number) => <span className="tnum">{v}</span>, dp: 0, neutral: true },
+                  ] as {
+                    label: string;
+                    a: number;
+                    b: number;
+                    render: (v: number) => React.ReactNode;
+                    dp: number;
+                    unit?: string;
+                    neutral?: boolean;
+                  }[]
+                ).map(({ label, a, b, render, dp, unit = "", neutral = false }) => {
+                  const d = b - a;
+                  return (
+                    <div key={label} className="contents">
+                      <div className="border-t border-border py-1.5">{label}</div>
+                      <div className="border-t border-border py-1.5">{render(a)}</div>
+                      <div className="border-t border-border py-1.5">{render(b)}</div>
+                      <div
+                        className={cx(
+                          "tnum border-t border-border py-1.5",
+                          neutral ? "text-text-muted" : d < 0 ? "text-loss" : "text-profit",
+                        )}
+                      >
+                        {d > 0 ? "+" : d < 0 ? "−" : ""}
+                        {Math.abs(d).toFixed(dp)}
+                        {unit}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-              <p className="mt-3 text-[11px] text-text-muted">Split at trade #45. OOS is {oosS.n} trades.</p>
+              <p className="mt-3 text-[11px] text-text-muted">
+                Split after trade #{isS.n}. OOS is {oosS.n} trades.
+              </p>
             </>
           ) : (
             <Refusal>
