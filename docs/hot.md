@@ -10,30 +10,31 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
-## ▶ UI build — SPEC LANDED, UI BUILT, NEITHER MERGED
+## ▶ UI build — SPEC MERGED, UI BUILT AND IN REVIEW
 
 **As of 2026-08-05.**
 
 | | |
 |---|---|
 | Spec | `docs/UI-PARITY-SPEC.md` — read it; this file does not restate it |
-| Branches | `docs/ui-parity-spec` → PR #1 · `feat/ui-build` → PR #2, **stacked on #1** |
-| `main` | still only the 4-byte README — merge #1 first, then #2 |
+| `main` | carries the spec and `docs/reference/`. **No `src/` yet** — that arrives with PR #2 |
+| PR #1 | `docs/ui-parity-spec` → **MERGED** |
+| PR #2 | `feat/ui-build` → open, retargeted to `main`, in review |
 | Board card | `consumer.ui-parity-spec` under `cap.consumer-shell`, **verify** |
 
 > ### Which branch am I on?
 >
-> **This file is checked in on both branches and describes both.** Nothing below runs from the
-> spec branch alone.
+> **This file is checked in on both branches and describes both.** Nothing below runs from `main`
+> until PR #2 lands.
 >
-> | | `docs/ui-parity-spec` (PR #1) | `feat/ui-build` (PR #2) |
+> | | `main` | `feat/ui-build` (PR #2) |
 > |---|---|---|
 > | `docs/UI-PARITY-SPEC.md`, `docs/reference/` | yes | yes |
-> | `package.json`, `src/`, `scripts/`, `docs/parity/` | **no** | yes |
+> | `package.json`, `src/`, `scripts/`, `docs/parity/` | **not yet** | yes |
 > | `npm i && npm run dev` | **cannot run** | runs → http://localhost:5199 |
 >
-> If `ls package.json` fails, you are on the spec branch. Everything in *What is built*, *Gates*
-> and *Runbook* below refers to `feat/ui-build`.
+> If `ls package.json` fails you are on `main`. Everything in *What is built*, *Gates* and
+> *Runbook* below refers to `feat/ui-build`.
 
 ### What is built — on `feat/ui-build` only
 
@@ -77,7 +78,9 @@ on §11's terms.
 
 ### Runbook — next steps, in order
 
-1. Clear Greptile on both PRs, then **merge #1 before #2** (#2 is based on #1, not on `main`).
+1. Clear Greptile on PR #2, then merge it to `main`. Check with
+   `node scripts/findings.mjs 2 feat/ui-build` — it prints whether the newest round actually
+   reviewed the current head, so a stale round cannot read as a pass.
 2. Operator moves the board card `verify → done`. Only the operator does this.
 3. Steps below need `feat/ui-build`. Start the dev server for screenshots: `npm run dev`, then
    `SEED=1 node scripts/shoot.mjs <out.png> [clickSelector ...]`.

@@ -1,6 +1,8 @@
 # TraderCockpit UI — Parity Spec v3
 
-**Status:** plan / spec only. No implementation yet.
+**Status:** built. This document stays the *specification* — it says what the UI must be, not what
+the code currently does. Live build state is `docs/hot.md`; where the two disagree, this file is
+the target and the build is the defect.
 **Scope:** visual + interaction-shape parity with the reference, **plus four deliberate
 divergences** (§0). **Capabilities explicitly out of scope** — no real LLM, no Pine compilation, no
 live market data, no real backtest engine. Everything renders from fixtures.
