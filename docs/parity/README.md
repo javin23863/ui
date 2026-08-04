@@ -1,7 +1,20 @@
 # Parity sheets — P6
 
 Each image is `docs/reference/<frame>` on the left and our render on the right, both at 1920×1080.
-Regenerate with `scripts/shoot.mjs` per state, then the `ffmpeg` hstack in the build log.
+
+> **These rot. Regenerate them in the same commit as any UI change.**
+>
+> The first set was shot before the `@layer base` fix and kept showing defects that were already
+> corrected — a gate artifact that disagrees with the build is worse than no artifact, because it
+> is trusted. If you changed anything visual and did not re-shoot, this folder is lying.
+
+Regenerate (dev server running on 5199):
+
+```bash
+SEED=1 node scripts/shoot.mjs <out.png> [data-apollo-id selectors to click ...]
+```
+
+then pair each with its reference frame via the `ffmpeg` hstack recorded in the build history.
 
 | Sheet | Reference frame | Verdict |
 |---|---|---|

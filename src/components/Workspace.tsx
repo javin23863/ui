@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, Check, ChevronDown, ChevronsLeft, Code2, Copy, LineChart, Play, Settings, Star, TrendingUp } from "lucide-react";
+import { Camera, Check, ChevronDown, ChevronsLeft, Code2, Copy, LineChart, Play, Settings, Star, TrendingUp, X } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
 import ChartPane from "./ChartPane";
 import BacktestPanel, { summaryKpis } from "./BacktestPanel";
@@ -26,7 +26,7 @@ export default function Workspace({
 }) {
   const [view, setView] = useState<View>("chart");
   const [settings, setSettings] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "ok" | "fail">("idle");
   const [tfOpen, setTfOpen] = useState(false);
   const [timeframe, setTimeframe] = useState<string>(summary.timeframe);
   const [picker, setPicker] = useState(false);
@@ -79,15 +79,33 @@ export default function Workspace({
             <>
               <button
                 data-apollo-id="copy-code"
+                // The Clipboard API is absent outside a secure context and can be
+                // denied by policy. Unhandled, the rejection escapes and the
+                // button silently keeps saying "Copy" — the failure has to be
+                // visible, since the user's next move depends on it having worked.
                 onClick={async () => {
-                  await navigator.clipboard.writeText(pineSource.trim());
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
+                  try {
+                    if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
+                    await navigator.clipboard.writeText(pineSource.trim());
+                    setCopyState("ok");
+                  } catch {
+                    setCopyState("fail");
+                  }
+                  setTimeout(() => setCopyState("idle"), 2000);
                 }}
-                className="flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-text-secondary hover:text-text-primary"
+                className={cx(
+                  "flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] hover:text-text-primary",
+                  copyState === "fail" ? "text-loss" : "text-text-secondary",
+                )}
               >
-                {copied ? <Check size={13} className="text-profit" /> : <Copy size={13} />}
-                {copied ? "Copied" : "Copy"}
+                {copyState === "ok" ? (
+                  <Check size={13} className="text-profit" />
+                ) : copyState === "fail" ? (
+                  <X size={13} />
+                ) : (
+                  <Copy size={13} />
+                )}
+                {copyState === "ok" ? "Copied" : copyState === "fail" ? "Copy failed" : "Copy"}
               </button>
               <button
                 data-apollo-id="run-code"
@@ -122,6 +140,10 @@ export default function Workspace({
         <BacktestPanel
           onCollapse={() => setView("chart")}
           onShowOnChart={(t) => {
+            // A trade only exists on the chart it was taken on, so go there
+            // rather than pointing at its timestamps on whatever is loaded.
+            setSymbol(RUN_SYMBOL);
+            setTimeframe(RUN_TIMEFRAME);
             setFocus(t);
             setView("chart");
           }}
@@ -158,6 +180,7 @@ export default function Workspace({
                         data-apollo-id={`tf-${tf}`}
                         onClick={() => {
                           setTimeframe(tf);
+                          if (tf !== RUN_TIMEFRAME) setFocus(null);
                           setTfOpen(false);
                         }}
                         className={cx(
@@ -183,6 +206,9 @@ export default function Workspace({
                 current={symbol}
                 onPick={(s) => {
                   setSymbol(s);
+                  // A focused trade belongs to the run's chart; leaving it set
+                  // would keep claiming "Showing trade #N" on a different market.
+                  if (s !== RUN_SYMBOL) setFocus(null);
                   setPicker(false);
                 }}
                 onClose={() => setPicker(false)}

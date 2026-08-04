@@ -161,14 +161,17 @@ export default function ChartPane({
   }, [showTrades, symbol, timeframe]);
 
   // Cross-link from the Trades Log: bring that trade's bar range into view.
+  // Gated on the run, like the overlays are — a trade's timestamps are 4h XAUUSD
+  // bars, so scrolling a BTCUSD 1m chart to them lands on a range that has
+  // nothing to do with the trade.
   useEffect(() => {
-    if (!focus || !chart.current) return;
+    if (!focus || !chart.current || !matchesRun) return;
     const pad = (focus.exitTime - focus.entryTime) * 1.5 || 86400;
     chart.current.timeScale().setVisibleRange({
       from: (focus.entryTime - pad) as Time,
       to: (focus.exitTime + pad) as Time,
     });
-  }, [focus]);
+  }, [focus, matchesRun]);
 
   return (
     <div className="relative h-full w-full">
