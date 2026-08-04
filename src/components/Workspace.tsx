@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, ChevronDown, ChevronsLeft, Code2, Copy, LineChart, Play, Settings, Star, TrendingUp } from "lucide-react";
+import { Camera, Check, ChevronDown, ChevronsLeft, Code2, Copy, LineChart, Play, Settings, Star, TrendingUp } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
 import ChartPane from "./ChartPane";
 import BacktestPanel, { summaryKpis } from "./BacktestPanel";
@@ -7,9 +7,11 @@ import { EquityCurve } from "./charts";
 import SettingsModal from "./SettingsModal";
 import TickerPicker from "./TickerPicker";
 import { AssetBadge, cx, KpiStrip } from "../ui";
-import { equity, pineSource, RUN_SYMBOL, summary } from "../fixtures/market";
+import { equity, pineSource, RUN_SYMBOL, RUN_TIMEFRAME, summary } from "../fixtures/market";
 
 type View = "chart" | "code" | "backtest";
+
+const TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h", "D", "W"] as const;
 
 export default function Workspace({
   title,
@@ -24,6 +26,9 @@ export default function Workspace({
 }) {
   const [view, setView] = useState<View>("chart");
   const [settings, setSettings] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [tfOpen, setTfOpen] = useState(false);
+  const [timeframe, setTimeframe] = useState<string>(summary.timeframe);
   const [picker, setPicker] = useState(false);
   const [symbol, setSymbol] = useState(summary.symbol);
   // Trade the chart is focused on, set by a Trades Log row click (§8d).
@@ -72,10 +77,26 @@ export default function Workspace({
         <div className="ml-auto flex items-center gap-3">
           {view === "code" ? (
             <>
-              <button data-apollo-id="copy-code" className="flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-text-secondary hover:text-text-primary">
-                <Copy size={13} /> Copy
+              <button
+                data-apollo-id="copy-code"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(pineSource.trim());
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }}
+                className="flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-text-secondary hover:text-text-primary"
+              >
+                {copied ? <Check size={13} className="text-profit" /> : <Copy size={13} />}
+                {copied ? "Copied" : "Copy"}
               </button>
-              <button data-apollo-id="run-code" className="flex h-8 items-center gap-1.5 rounded-md bg-bg-elevated px-3 text-[13px]">
+              <button
+                data-apollo-id="run-code"
+                // Applies the script to the chart, which is what Run does here.
+                // It does not compile Pine — capabilities are out of scope — so it
+                // must not imply a compile step it cannot perform.
+                onClick={() => setView("chart")}
+                className="flex h-8 items-center gap-1.5 rounded-md bg-bg-elevated px-3 text-[13px]"
+              >
                 <Play size={13} /> Run
               </button>
             </>
@@ -120,10 +141,37 @@ export default function Workspace({
               <span className="size-1.5 rounded-full bg-profit" />
               <ChevronDown size={12} className="text-text-muted" />
             </button>
-            <button data-apollo-id="timeframe" className="flex h-8 items-center gap-1 rounded-md bg-bg-panel px-2 text-[13px] hover:bg-bg-hover">
-              {summary.timeframe}
-              <ChevronDown size={12} className="text-text-muted" />
-            </button>
+            <div className="relative">
+              <button
+                data-apollo-id="timeframe"
+                onClick={() => setTfOpen((o) => !o)}
+                className="flex h-8 items-center gap-1 rounded-md bg-bg-panel px-2 text-[13px] hover:bg-bg-hover"
+              >
+                {timeframe}
+                <ChevronDown size={12} className="text-text-muted" />
+              </button>
+              {tfOpen && (
+                <ul className="absolute top-9 left-0 z-30 w-20 rounded-lg border border-border bg-bg-elevated p-1 shadow-xl">
+                  {TIMEFRAMES.map((tf) => (
+                    <li key={tf}>
+                      <button
+                        data-apollo-id={`tf-${tf}`}
+                        onClick={() => {
+                          setTimeframe(tf);
+                          setTfOpen(false);
+                        }}
+                        className={cx(
+                          "w-full rounded px-2 py-1 text-left text-[13px] hover:bg-bg-hover",
+                          tf === timeframe && "text-accent",
+                        )}
+                      >
+                        {tf}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <button data-apollo-id="indicators" aria-label="Indicators" className="grid size-8 place-items-center rounded-md text-text-muted hover:text-text-primary">
               <LineChart size={14} />
             </button>
@@ -155,14 +203,14 @@ export default function Workspace({
               </button>
             </div>
           )}
-          {hasStrategy && symbol !== RUN_SYMBOL && (
+          {hasStrategy && (symbol !== RUN_SYMBOL || timeframe !== RUN_TIMEFRAME) && (
             <div className="mx-4 mb-1 rounded-md bg-bg-elevated px-3 py-1.5 text-[11px] text-text-muted">
-              Showing {symbol}. The backtest below was run on {RUN_SYMBOL} — its trades are not
-              drawn here.
+              Showing {symbol} {timeframe}. The backtest below was run on {RUN_SYMBOL} {RUN_TIMEFRAME}
+              — its trades are not drawn here.
             </div>
           )}
           <div className="min-h-0 flex-1">
-            <ChartPane symbol={symbol} withTrades={hasStrategy} focus={focus} />
+            <ChartPane symbol={symbol} timeframe={timeframe} withTrades={hasStrategy} focus={focus} />
           </div>
 
           {hasStrategy && (

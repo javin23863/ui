@@ -7,7 +7,7 @@ import {
   type ISeriesApi,
   type Time,
 } from "lightweight-charts";
-import { candlesFor, emaFor, markers, RUN_SYMBOL, tradeZone } from "../fixtures/market";
+import { candlesFor, emaFor, markers, RUN_SYMBOL, RUN_TIMEFRAME, tradeZone } from "../fixtures/market";
 
 const T = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
@@ -18,17 +18,21 @@ const T = (n: string) => getComputedStyle(document.documentElement).getPropertyV
  */
 export default function ChartPane({
   symbol,
+  timeframe,
   withTrades,
   focus,
 }: {
   symbol: string;
+  timeframe: string;
   withTrades: boolean;
   /** A trade selected in the Trades Log — the chart scrolls to its bar range (§8d). */
   focus?: { n: number; entryTime: number; exitTime: number } | null;
 }) {
-  // Trade overlays belong to the committed run. Drawing them over a different
-  // instrument would attribute those fills to a market they never happened in.
-  const showTrades = withTrades && symbol === RUN_SYMBOL;
+  // Trade overlays belong to the committed run — a specific instrument at a
+  // specific timeframe. Drawing them over anything else attributes those fills
+  // to a chart they never happened on; the bar timestamps would not even line up.
+  const matchesRun = symbol === RUN_SYMBOL && timeframe === RUN_TIMEFRAME;
+  const showTrades = withTrades && matchesRun;
   const host = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const priceRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -38,24 +42,25 @@ export default function ChartPane({
   // §13.1 — what Apollo reads instead of OCR-ing the canvas. Derived from the
   // same source the chart draws from, so it cannot describe a different series.
   const meta = useMemo(() => {
-    const cs = candlesFor(symbol);
+    const cs = candlesFor(symbol, timeframe);
     return {
       kind: "candles",
       symbol,
-      timeframe: "4h",
+      timeframe,
       bars: cs.length,
       first: cs[0].time,
       last: cs.at(-1)!.time,
       overlays: showTrades ? ["ema", "trade-markers", "tp-zone", "sl-zone"] : ["ema"],
       tradesShown: showTrades,
       runSymbol: RUN_SYMBOL,
+      runTimeframe: RUN_TIMEFRAME,
       focusedTrade: focus?.n ?? null,
     };
-  }, [symbol, showTrades, focus?.n]);
+  }, [symbol, timeframe, showTrades, focus?.n]);
 
   useEffect(() => {
     if (!host.current) return;
-    const candles = candlesFor(symbol);
+    const candles = candlesFor(symbol, timeframe);
     const ema = emaFor(candles);
     const profit = T("--color-profit");
     const loss = T("--color-loss");
@@ -153,7 +158,7 @@ export default function ChartPane({
       cancelAnimationFrame(settle);
       c.remove();
     };
-  }, [showTrades, symbol]);
+  }, [showTrades, symbol, timeframe]);
 
   // Cross-link from the Trades Log: bring that trade's bar range into view.
   useEffect(() => {

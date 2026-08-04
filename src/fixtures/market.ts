@@ -66,10 +66,25 @@ const seedOf = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0))
  * ticker used to change only the label, which in a trading UI misattributes
  * price action to the wrong market.
  */
-export function candlesFor(symbol: string): Candle[] {
+/** Bar interval in seconds, per timeframe label. */
+const TF_SECONDS: Record<string, number> = {
+  "1m": 60,
+  "5m": 300,
+  "15m": 900,
+  "1h": 3600,
+  "4h": 4 * 3600,
+  D: DAY,
+  W: 7 * DAY,
+};
+
+export function candlesFor(symbol: string, timeframe = "4h"): Candle[] {
   const base = BASE[symbol] ?? 100;
-  const vol = base * 0.0016;
-  const r = rng(seedOf(symbol));
+  const step = TF_SECONDS[timeframe] ?? TF_SECONDS["4h"];
+  // Volatility scales with the square root of the bar interval, so a 1m chart
+  // is not a 4h chart with a different label — switching timeframe has to move
+  // the data, not just the chip.
+  const vol = base * 0.0016 * Math.sqrt(step / TF_SECONDS["4h"]);
+  const r = rng(seedOf(symbol + timeframe));
   const out: Candle[] = [];
   let px = base;
   for (let i = 0; i < 420; i++) {
@@ -78,7 +93,7 @@ export function candlesFor(symbol: string): Candle[] {
     const close = open + drift + (r() - 0.5) * vol * 9;
     const high = Math.max(open, close) + r() * vol * 4.5;
     const low = Math.min(open, close) - r() * vol * 4.5;
-    out.push({ time: START + i * DAY * 0.25, open, high, low, close });
+    out.push({ time: START + i * step, open, high, low, close });
     px = close;
   }
   return out;
@@ -93,8 +108,9 @@ export function emaFor(cs: Candle[]): { time: number; value: number }[] {
   });
 }
 
-/** The symbol the committed backtest run belongs to. */
+/** The instrument and timeframe the committed backtest run belongs to. */
 export const RUN_SYMBOL = "XAUUSD";
+export const RUN_TIMEFRAME = "4h";
 
 export const candles = candlesFor(RUN_SYMBOL);
 export const ema = emaFor(candles);
