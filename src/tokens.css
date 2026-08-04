@@ -74,14 +74,23 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-button {
-  font: inherit;
-  color: inherit;
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-input {
-  font: inherit;
-  color: inherit;
+/* These MUST sit in @layer base. Unlayered rules beat layered ones in the
+   cascade, so a bare `button { background: none; color: inherit }` silently
+   overrides every Tailwind bg-* and text-* utility applied to a button —
+   which is exactly what happened: active pills lost their fill and muted
+   labels rendered at full brightness. */
+@layer base {
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
 }
