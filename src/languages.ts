@@ -180,6 +180,17 @@ def shortStopAt = if slMethod == slMethod."ATR" then close + atr * atrMult else 
 # reason. Recomputing them from each new bar's close and ATR would walk the
 # stop and the target along with price, which is a different strategy - it can
 # never be stopped out on a trend against it.
+#
+# ${NO_EQUIVALENT} Pine assigns those floats ONLY inside its flat-entry block,
+# gated on strategy.position_size == 0, so a bracket survives untouched for the
+# life of the position. These recurrences latch on the signal bar but have no
+# flat test to gate on, because a study cannot read its own position size. A
+# SECOND qualifying signal while the first position is still open therefore
+# REPLACES that position's stop and target - a long bracketed 90 / 115 becomes
+# 95 / 132.5 and exits where Pine never would. A study-side state machine could
+# approximate the flat test from this script's own entries and exits, but that
+# is a reimplementation of the broker state Pine reads rather than a
+# translation of what Pine's source says, and it is not shipped here unproven.
 rec longStop    = if longSignal  then longStopAt  else longStop[1];
 rec shortStop   = if shortSignal then shortStopAt else shortStop[1];
 rec longTarget  = if longSignal  then close + (close - longStopAt) * rr else longTarget[1];

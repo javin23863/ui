@@ -16,7 +16,7 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 | | |
 |---|---|
-| PR | **[#7](https://github.com/javin23863/ui/pull/7)** — OPEN. CI `gates` SUCCESS. **Greptile round 1 (at `69094f1`): 4/5, TWO P1s, both real, both fixed — re-review owed at the new head.** Trap #2 in `HANDOFF.md` applies — a clean pass creates no review object and no comments, so poll the PR **body** for its `Reviews (N)` line, not the reviews endpoint. |
+| PR | **[#7](https://github.com/javin23863/ui/pull/7)** — OPEN. CI `gates` SUCCESS at `55c2ddd`. **Round 1 (at `69094f1`): 4/5, two P1s, both real, both fixed. Round 2 (at `55c2ddd`): ONE P1, and it says round 1's latch was half a fix — a later signal still replaces an open bracket. Fixed and re-review owed at the new head.** The `Greptile Review` *check* reads `fail` on a confidence threshold, not a verdict — read the body. Trap #2 in `HANDOFF.md` applies — a clean pass creates no review object and no comments, so poll the PR **body** for its `Reviews (N)` line, not the reviews endpoint. |
 | Branch | `feat/code-pane-languages`, worktree `C:\tmp\ui-code-pane-languages` |
 | Spec | `docs/UI-NEXT-INCREMENT.md` §17a/§17b, amendments recorded **in a commit of their own, before any code** |
 | Cards | `consumer.ui-indicator-representation` — **active**, now 17a/17b only; §17c **and §17d's per-run engine field** split out to `consumer.ui-indicator-families` (inbox), where the engine deferral is acceptance row 6 — stated once on the card, with the `notes` field pointing to it rather than restating it. §17d in `UI-NEXT-INCREMENT.md` keeps the plan-side record; that is not duplication and must not be deleted as such. |
@@ -91,6 +91,28 @@ and the rendered buffer all read from it — the same shape as `presentedRowsFor
   `.disabled` and nothing else, so deleting the reason sentence left the sweep green. Also caught by
   pass 3, and the same failure mode pass 2 caught: a clause that reads as covered because a sibling
   clause is.
+
+### Round 2 at `55c2ddd` — one P1, and my round-1 fix was half a fix
+
+- **P1-C — latching the bracket was not the same as keeping it.** Round 1's `rec` stopped the levels
+  walking with price, and I called P1-A closed. It was not: `rec longStop` is conditioned on
+  `longSignal` alone, so a **second qualifying signal while the first position is still open replaces
+  that position's stop and target** — Greptile's deterministic run shows a long bracketed `90`/`115`
+  becoming `95`/`132.5`. Pine assigns those floats **only inside its flat-entry block**, gated on
+  `strategy.position_size == 0`. The class check says MQL5 is clean — `PositionSelect` at its
+  `OnTick` head is that guard, and its bracket is attached to the order — so this is thinkScript's
+  alone.
+- **Marked, not silently "fixed".** A study cannot read its own position size, so the flat gate
+  cannot be written the way Pine writes it. A study-side state machine could *approximate* it from
+  this script's own entries and exits, but that is a reimplementation of broker state that has never
+  been compiled or run — shipping it as a translation would be the §17b defect wearing the fix's
+  clothes. It carries `NO FAITHFUL EQUIVALENT:` at the recurrences instead, naming the exact
+  consequence, and the marker travels with the clipboard.
+- **The row that should have caught it was blind to a third of the pane.** `no-equivalent marked at
+  the line` asserted MQL5 and Pine and **never selected thinkScript**. Now asserts thinkScript's
+  markers survive `Copy` too, and names the construct — a bare count would still pass, because
+  thinkScript already marked its orders and its exits. Mutation: dropping the token from the bracket
+  note takes `thinkScriptMarkedLines` 3 → 2, `bracketMarked=false`, **48/49, exit 1**.
 
 > **The harness lied about its own result.** `sweep.mjs` printed
 > `empty-state sweep: PASS — every row said no` **unconditionally**, outside the `if (failed.length)`

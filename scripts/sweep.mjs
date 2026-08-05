@@ -1153,13 +1153,26 @@ try {
         const marked = await refusedLines();
         const copied = (await copiedText()) ?? "";
         const inClipboard = marked.length > 0 && marked.every((line) => copied.includes(line));
+        // Greptile round 2 found the bracket divergence in thinkScript, which
+        // this row was blind to: it asserted MQL5 and Pine and left the third
+        // buffer's refusals unchecked. A count alone would not have caught it
+        // either — thinkScript already marked its orders and its exits — so the
+        // specific construct is named. Pine assigns stop and target only while
+        // flat; a study has no position size to gate on, so a later signal
+        // replaces an open bracket, and that must be marked AT the recurrences.
+        await click("code-language");
+        await click("code-language-thinkscript");
+        const think = await refusedLines();
+        const thinkCopied = (await copiedText()) ?? "";
+        const thinkSurvives = think.length > 0 && think.every((line) => thinkCopied.includes(line));
+        const bracketMarked = think.some((line) => /flat-entry block/i.test(line));
         // Canonical Pine is nobody's translation, so it must carry none.
         await click("code-language");
         await click("code-language-pine");
         const onPine = await refusedLines();
         return [
-          marked.length > 0 && inClipboard && onPine.length === 0,
-          `mql5MarkedLines=${marked.length} allSurviveCopy=${inClipboard} pineMarkedLines=${onPine.length}`,
+          marked.length > 0 && inClipboard && thinkSurvives && bracketMarked && onPine.length === 0,
+          `mql5MarkedLines=${marked.length} allSurviveCopy=${inClipboard} thinkScriptMarkedLines=${think.length} thinkSurvivesCopy=${thinkSurvives} bracketMarked=${bracketMarked} pineMarkedLines=${onPine.length}`,
         ];
       },
     },
