@@ -1,4 +1,8 @@
-import { asPresented, summary, pineSource, rangeLabelFor, statsFor, trades } from "./fixtures/market";
+import { asPresented, summary, rangeLabelFor, statsFor, trades } from "./fixtures/market";
+import { CANONICAL, languageFor, type LanguageId } from "./languages";
+
+/** Every saved run captures the canonical source — see `SavedRun.sourceLanguage`. */
+const canonicalSource = languageFor(CANONICAL).source;
 
 /**
  * The run model, and the ONE place the adequacy thresholds live.
@@ -121,6 +125,18 @@ export type SavedRun = {
    */
   profile: Profile;
   source: string;
+  /**
+   * §17b — the language `source` is written in.
+   *
+   * A card renders the saved source and that run's own numbers together, so it
+   * is the one surface where a derived translation could end up sitting beside
+   * figures it did not produce. A save therefore captures the CANONICAL source
+   * whatever the code pane happens to be showing, and this field is what makes
+   * that checkable rather than asserted — the same reason §15a shows the source
+   * at all. Hardcoding the label on the card would restate the claim without
+   * carrying its data, which is the defect class this build keeps re-buying.
+   */
+  sourceLanguage: LanguageId;
   /** The facts as they were AT SAVE TIME. A saved run is immutable. */
   facts: RunFacts;
   netProfit: number;
@@ -186,7 +202,8 @@ export function captureCurrentRun(profile: Profile, parentId: string | null = nu
     rangeLabel: rangeLabelFor(rows),
     strategy: summary.strategy,
     profile,
-    source: pineSource,
+    source: canonicalSource,
+    sourceLanguage: CANONICAL,
     facts: factsForProfile(profile),
     netProfit: s.netProfit,
     winRate: s.winRate,
@@ -227,7 +244,8 @@ export const SEEDED_RUNS: SavedRun[] = [
     rangeLabel: "Jan 3, 2024 – Jul 15, 2026",
     strategy: "Liquidity Sweep Reversal",
     profile: "full",
-    source: pineSource,
+    source: canonicalSource,
+    sourceLanguage: CANONICAL,
     facts: { trades: 138, perMonth: 4.2, top3Share: 18, costsModelled: true, holdout: "ok" },
     netProfit: 5240.75,
     winRate: 47.83,
@@ -245,7 +263,8 @@ export const SEEDED_RUNS: SavedRun[] = [
     rangeLabel: "Feb 1, 2026 – Jul 15, 2026",
     strategy: "Martingale Grid",
     profile: "full",
-    source: pineSource,
+    source: canonicalSource,
+    sourceLanguage: CANONICAL,
     // Highest headline in the library and the least able to support it.
     facts: { trades: 9, perMonth: 1.6, top3Share: 88, costsModelled: false, holdout: "undeclared" },
     netProfit: 41_820.5,
@@ -264,7 +283,8 @@ export const SEEDED_RUNS: SavedRun[] = [
     rangeLabel: "Jan 3, 2024 – Jul 15, 2026",
     strategy: "Liquidity Sweep Reversal (wider stop)",
     profile: "full",
-    source: pineSource,
+    source: canonicalSource,
+    sourceLanguage: CANONICAL,
     facts: { trades: 41, perMonth: 1.1, top3Share: 34, costsModelled: true, holdout: "declared-empty" },
     netProfit: 1204.35,
     winRate: 39.02,
@@ -284,7 +304,8 @@ export const SEEDED_RUNS: SavedRun[] = [
     rangeLabel: "Jan 2, 2026 – Mar 28, 2026",
     strategy: "Opening Range Breakout",
     profile: "full",
-    source: pineSource,
+    source: canonicalSource,
+    sourceLanguage: CANONICAL,
     facts: { trades: 212, perMonth: 70.6, top3Share: 12, costsModelled: true, holdout: "ok" },
     netProfit: -884.1,
     winRate: 44.34,
@@ -302,7 +323,8 @@ export const SEEDED_RUNS: SavedRun[] = [
     rangeLabel: "Sep 1, 2025 – Dec 19, 2025",
     strategy: "VWAP Fade",
     profile: "full",
-    source: pineSource,
+    source: canonicalSource,
+    sourceLanguage: CANONICAL,
     facts: { trades: 63, perMonth: 15.8, top3Share: 21, costsModelled: true, holdout: "ok" },
     netProfit: 3117.6,
     winRate: 51.2,

@@ -12,8 +12,9 @@ Quant). It is **UI only** — there is no LLM, no Pine compilation, no market da
 engine, deliberately. Everything renders from one seeded fixture.
 
 The parity plan is **finished**: P0–P6, all merged to `main`, all gates green. Of the next
-increment, **§15 Strategy Library and §16 Screeners are merged to `main`** (PRs #4 and #5); §17 is
-specced but not built.
+increment, **§15 Strategy Library, §16 Screeners and §18 the screening split are merged to `main`**
+(PRs #4, #5 and #6). **§17a/§17b — the multi-language code pane — is on `feat/code-pane-languages`**;
+§17c indicator families is specced and carded, not built.
 
 ```bash
 git clone https://github.com/javin23863/ui && cd ui
@@ -50,7 +51,8 @@ npm i && npm run dev      # → http://localhost:5199
 | `consumer.ui-p6-gates` | **active** — PR #3 merged, awaiting the same |
 | `consumer.ui-strategy-library` | **verify** — §15 merged (PR #4), operator moves to done |
 | `consumer.ui-screeners` | **verify** — §16 merged (PR #5), operator moves to done |
-| `consumer.ui-indicator-representation` | **ready** — §17, deferred behind §18 on operator direction |
+| `consumer.ui-indicator-representation` | **active** — §17a/§17b, on `feat/code-pane-languages` |
+| `consumer.ui-indicator-families` | **inbox** — §17c, split out 2026-08-05 so the card above is not partially satisfied |
 | `consumer.ui-setup-screener` | **verify** — §18 merged (PR #6), operator moves to done |
 
 ---
@@ -71,7 +73,7 @@ The two browser gates need `npm run dev` on 5199 **and** a Chrome on CDP 9333:
 ```bash
 chrome --remote-debugging-port=9333 --user-data-dir=<scratch> --window-size=1920,1080
 node scripts/reflow.mjs   # 1440 + 1280, asserts, exits non-zero
-node scripts/sweep.mjs    # 41-row empty-state sweep, asserts, exits non-zero
+node scripts/sweep.mjs    # 47-row empty-state sweep, asserts, exits non-zero
 node scripts/parity.mjs   # regenerates the seven side-by-side sheets
 ```
 
@@ -94,8 +96,9 @@ node scripts/parity.mjs   # regenerates the seven side-by-side sheets
    Chrome.
 4. **The defect class of this build is a label that moves without its data.** Bought six times —
    ticker, timeframe, trade focus, asset badge, then hardcoded fixture aggregates that contradicted
-   the ledger they summarised. **The label and the data come from the same call.** When §17 adds a
-   second strategy language, `Copy` copying `pineSource` unconditionally is this defect again.
+   the ledger they summarised. **The label and the data come from the same call.** Its seventh
+   appearance was the one §17a was filed against and has now closed: `Copy` read `pineSource` while
+   the pane could show three languages. `src/languages.ts` is the single answer both read.
 5. **An invalid mutation test is worse than none.** Removing `overflow-x-auto` left the reflow gate
    green *correctly* — CSS computes the other axis to `auto` and an outer container absorbs the
    scroll. Recording "gate proven" on that would have been a false receipt. Mutate something that

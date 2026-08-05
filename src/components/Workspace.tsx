@@ -8,7 +8,8 @@ import SettingsModal from "./SettingsModal";
 import TickerPicker from "./TickerPicker";
 import { AssetBadge, cx, KpiStrip } from "../ui";
 import type { Profile } from "../runs";
-import { equity, pineSource, RUN_SYMBOL, RUN_TIMEFRAME, summary } from "../fixtures/market";
+import { equity, RUN_SYMBOL, RUN_TIMEFRAME, summary } from "../fixtures/market";
+import { CANONICAL, isDerived, LANGUAGES, languageFor, NO_EQUIVALENT, type LanguageId } from "../languages";
 
 type View = "chart" | "code" | "backtest";
 
@@ -42,7 +43,14 @@ export default function Workspace({
   const [view, setView] = useState<View>("chart");
   const [settings, setSettings] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "ok" | "fail">("idle");
+  // §17a. Lifted to the workspace because the header's Copy/Run and the pane
+  // below it must act on the SAME selection. Keeping it inside CodeView is how
+  // Copy ends up wired to a buffer the pane is not showing.
+  const [lang, setLang] = useState<LanguageId>(CANONICAL);
+  const active = languageFor(lang);
+  const derived = isDerived(lang);
   const [tfOpen, setTfOpen] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
   const [picker, setPicker] = useState(false);
   const setTimeframe = onTimeframe;
   const setSymbol = onSymbol;
@@ -92,6 +100,46 @@ export default function Workspace({
         <div className="ml-auto flex items-center gap-3">
           {view === "code" ? (
             <>
+              {/* §17a — a list, not hardcoded buttons, and §0g declares it as a
+                  third control in a header §7 observed as carrying two. */}
+              <div className="relative">
+                <button
+                  data-apollo-id="code-language"
+                  aria-haspopup="listbox"
+                  aria-expanded={langOpen}
+                  onClick={() => setLangOpen((o) => !o)}
+                  className="flex h-8 items-center gap-1 rounded-md bg-bg-panel px-2 text-[13px] hover:bg-bg-hover"
+                >
+                  {active.label}
+                  <ChevronDown size={12} className="text-text-muted" />
+                </button>
+                {langOpen && (
+                  <div
+                    role="listbox"
+                    className="absolute top-9 left-0 z-20 w-36 rounded-md border border-border bg-bg-elevated py-1 shadow-lg"
+                  >
+                    {LANGUAGES.map((l) => (
+                      <button
+                        key={l.id}
+                        role="option"
+                        aria-selected={l.id === lang}
+                        data-apollo-id={`code-language-${l.id}`}
+                        onClick={() => {
+                          setLang(l.id);
+                          setLangOpen(false);
+                        }}
+                        className={cx(
+                          "block w-full px-2.5 py-1 text-left text-[13px] hover:bg-bg-hover",
+                          l.id === lang ? "text-text-primary" : "text-text-secondary",
+                        )}
+                      >
+                        {l.label}
+                        {l.id === CANONICAL && <span className="ml-1.5 text-[11px] text-text-muted">canonical</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 data-apollo-id="copy-code"
                 // The Clipboard API is absent outside a secure context and can be
@@ -101,7 +149,11 @@ export default function Workspace({
                 onClick={async () => {
                   try {
                     if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
-                    await navigator.clipboard.writeText(pineSource.trim());
+                    // §17a — what the pane is SHOWING. This read `pineSource`
+                    // unconditionally, which was correct only while one
+                    // language existed and became the label-without-its-data
+                    // defect the moment a second did.
+                    await navigator.clipboard.writeText(active.source.trim());
                     setCopyState("ok");
                   } catch {
                     setCopyState("fail");
@@ -127,8 +179,18 @@ export default function Workspace({
                 // Applies the script to the chart, which is what Run does here.
                 // It does not compile Pine — capabilities are out of scope — so it
                 // must not imply a compile step it cannot perform.
+                //
+                // §17a/§17b — and on a DERIVED language it refuses. The chart it
+                // switches to shows the canonical run; leaving Run live under a
+                // translation would be the layout claiming that translation
+                // produced what appears next. That is the sharpest place on this
+                // surface to imply an execution that never happened.
+                disabled={derived}
                 onClick={() => setView("chart")}
-                className="flex h-8 items-center gap-1.5 rounded-md bg-bg-elevated px-3 text-[13px]"
+                className={cx(
+                  "flex h-8 items-center gap-1.5 rounded-md px-3 text-[13px]",
+                  derived ? "cursor-not-allowed bg-bg-panel text-text-muted" : "bg-bg-elevated",
+                )}
               >
                 <Play size={13} /> Run
               </button>
@@ -166,7 +228,7 @@ export default function Workspace({
           }}
         />
       ) : view === "code" ? (
-        <CodeView />
+        <CodeView lang={lang} />
       ) : (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="relative flex items-center gap-2 px-4 pt-3 pb-1">
@@ -279,22 +341,76 @@ export default function Workspace({
   );
 }
 
-function CodeView() {
+function CodeView({ lang }: { lang: LanguageId }) {
+  const l = languageFor(lang);
+  const derived = isDerived(lang);
+  const canonicalLabel = languageFor(CANONICAL).label;
+  const source = l.source.trim();
+
   return (
     <div className="min-h-0 flex-1 overflow-auto px-4 pt-3 pb-4">
-      <Highlight theme={themes.vsDark} code={pineSource.trim()} language="javascript">
+      {/* §17b — the canonical/derived LABEL. This is a positive requirement in
+          its own right, not something the absence of numbers on this view
+          satisfies by accident: "which language is canonical" is a fact the
+          trader cannot infer from a layout that simply shows nothing. */}
+      <div
+        data-apollo-id="code-provenance"
+        className={cx(
+          "mb-3 rounded-md border px-3 py-2 text-[11px] leading-[1.6]",
+          derived ? "border-warning/40 bg-warning/10" : "border-border bg-bg-elevated",
+        )}
+      >
+        <strong className={derived ? "text-warning" : "text-text-primary"}>
+          {l.label} — {derived ? "derived translation" : "canonical"}
+        </strong>{" "}
+        <span className="text-text-secondary">
+          {derived ? (
+            <>
+              Hand-written from the {canonicalLabel} source and never executed. Every number recorded
+              against this run was produced from {canonicalLabel}, not from this text, and{" "}
+              <code>Run</code> is unavailable here for that reason.
+            </>
+          ) : (
+            <>This is the source the run was executed from. The numbers recorded against it came from this text.</>
+          )}
+        </span>
+        <div className="mt-1 text-text-muted">{l.highlightNote}</div>
+      </div>
+
+      <Highlight theme={themes.vsDark} code={source} language={l.highlight}>
         {({ tokens, getLineProps, getTokenProps }) => (
           <pre className="font-mono text-[12px] leading-[1.5]" data-apollo-id="code-editor">
-            {tokens.map((line, i) => (
-              <div key={i} {...getLineProps({ line })} className={cx("flex", i === 0 && "bg-[#1b2333]")}>
-                <span className="w-11 shrink-0 pr-3 text-right text-text-muted select-none">{i + 1}</span>
-                <span className="whitespace-pre">
-                  {line.map((token, k) => (
-                    <span key={k} {...getTokenProps({ token })} />
-                  ))}
-                </span>
-              </div>
-            ))}
+            {tokens.map((line, i) => {
+              // §17b — the refusal is rendered AT THE LINE, not as a banner over
+              // the pane. Read from the buffer's own text, so the pane cannot
+              // mark a line the clipboard does not carry.
+              // Joined, not per-token: Prism may split a comment across tokens
+              // (it already does on Pine's licence URL), and a per-token test
+              // would miss a marker that straddles the boundary.
+              const refuses = line.map((t) => t.content).join("").includes(NO_EQUIVALENT);
+              return (
+                <div
+                  key={i}
+                  {...getLineProps({ line })}
+                  data-apollo-id={refuses ? "code-no-equivalent" : undefined}
+                  // The left rule is on EVERY line, transparent when the line
+                  // has an equivalent — otherwise marked lines shift 2px and
+                  // the observed right-aligned gutter (§7) stops lining up.
+                  className={cx(
+                    "flex border-l-2",
+                    i === 0 && "bg-[#1b2333]",
+                    refuses ? "border-warning bg-warning/10" : "border-transparent",
+                  )}
+                >
+                  <span className="w-11 shrink-0 pr-3 text-right text-text-muted select-none">{i + 1}</span>
+                  <span className="whitespace-pre">
+                    {line.map((token, k) => (
+                      <span key={k} {...getTokenProps({ token })} />
+                    ))}
+                  </span>
+                </div>
+              );
+            })}
           </pre>
         )}
       </Highlight>

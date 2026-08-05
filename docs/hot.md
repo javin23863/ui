@@ -12,6 +12,65 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
+## ▶ §17a/§17b The code pane becomes multi-language — on `feat/code-pane-languages`, not yet merged
+
+| | |
+|---|---|
+| Branch | `feat/code-pane-languages`, worktree `C:\tmp\ui-code-pane-languages` |
+| Spec | `docs/UI-NEXT-INCREMENT.md` §17a/§17b, amendments recorded **in a commit of their own, before any code** |
+| Cards | `consumer.ui-indicator-representation` — **active**, now 17a/17b only; §17c split out to `consumer.ui-indicator-families` (inbox) |
+| plan-warden | ON PLAN WITH CORRECTIONS — six blocking, all applied |
+| Gates | sweep **47/47**, reflow PASS at 1440 + 1280, palette 20/20, `tsc -b` clean, `build` clean, seven parity sheets regenerated |
+
+The pane rendered Pine and only Pine, so a strategy in this cockpit was unusable to every trader
+not on TradingView. It now carries **`Pine v6` · `MQL5` · `thinkScript`**, each a real hand-written
+buffer rather than one text under three labels.
+
+**The defect this closes, on its seventh appearance.** `Copy` read `pineSource` unconditionally and
+so did the pane. Correct while one language existed; the moment a second did, the button would have
+copied Pine while the screen showed MQL5. `src/languages.ts` is now the one answer to *"which
+language is the pane showing"*, and the header's `Copy`, the header's `Run`, the provenance label
+and the rendered buffer all read from it — the same shape as `presentedRowsFor` in §15.
+
+### What the warden stopped
+
+- **The selector is a §0 divergence, and I had not declared it.** §7 records the code-pane header
+  from `03-code-view.png` as `⧉ Copy` / `▷ Run` — an *observed count*, the same class of fact as
+  §0f's five rail icons. A third control is a real divergence. Declared as **§0g before shipping**.
+- **thinkScript is scope growth.** §17a named two languages. *"Extensible"* describes the data
+  structure; it does not authorise a third entry. Recorded as a dated amendment inside §17a naming
+  the operator direction it came from — and under *this* increment's card, not another card's title.
+- **The canonical/derived label is a positive requirement**, not something satisfied by the accident
+  that no numbers currently render on the code view. Building only the prohibition leaves the honest
+  case unrendered.
+- **The card was split, not partially satisfied.** Moving a card titled *"language coverage **and
+  indicator families**"* to `verify` on the language clause alone is scope narrowing reported as
+  completion.
+- **§17d hides a positive obligation** behind its no-embed rule: a run must be labelled with its
+  engine. Answered rather than skipped — the canonical/derived half ships now; a per-run `engine`
+  field waits for a second engine to exist, since a field with one possible value resolves nothing.
+
+### Decisions worth keeping
+
+- **`Run` refuses on a derived language.** It switches to a chart showing the *canonical* run, so
+  leaving it live under a translation would be the layout claiming that translation produced what
+  appears next.
+- **The refusal marker lives INSIDE the source text**, as a native comment carrying
+  `NO FAITHFUL EQUIVALENT:`. One string, so the pane cannot mark a line the clipboard does not — and
+  the warning survives the paste, which is the exact moment it matters. Three in MQL5 (no option
+  lists, no implicit position size, an EA cannot plot), two in thinkScript (no readable position
+  size, `AddOrder` has no attached bracket). Zero in Pine, which is nobody's translation.
+- **The highlighting substitution is recorded per language, with its ceiling.** MQL5-as-C++ is a
+  good fit; thinkScript-as-C++ is a *weaker* one and is written down as weaker. You can see it: in
+  thinkScript, `default` inside an option list colours as a C++ keyword when it is not one.
+
+> **A mutation caught my own assertion being decorative — again.** `a save captures the canonical`
+> read the *first* card in the library, which is a SEEDED card. It passed with the save deliberately
+> broken. Scoped to the card for the run just saved, it fails on exactly the defect it names. **The
+> rule that keeps earning its keep: a row that has not been watched to fail is not a gate.**
+
+---
+
 ## §18 The screening surface is two surfaces — MERGED TO MAIN 2026-08-05
 
 | | |

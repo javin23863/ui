@@ -167,6 +167,45 @@ try {
   const screenerText = () =>
     evaluate(`document.querySelector('[data-apollo-id="screener"]')?.innerText ?? ''`);
 
+  /** Open the §17a code pane, optionally on a given language. */
+  const codePane = async (langId = null) => {
+    await load();
+    await click("view-code");
+    if (langId) {
+      await click("code-language");
+      await click(`code-language-${langId}`);
+    }
+  };
+  const paneText = () =>
+    evaluate(`document.querySelector('[data-apollo-id="code-editor"]')?.textContent ?? ''`);
+  const provenanceText = () =>
+    evaluate(`document.querySelector('[data-apollo-id="code-provenance"]')?.innerText ?? ''`);
+  /**
+   * Capture what `Copy` actually writes.
+   *
+   * `navigator.clipboard` is a readonly accessor, so it is replaced by
+   * definition rather than assignment — and the component's own
+   * `navigator.clipboard?.writeText` guard is satisfied by the stub, so this
+   * exercises the real success path rather than the failure branch.
+   */
+  const copiedText = async () => {
+    await evaluate(`(() => {
+      window.__copied = null;
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (t) => { window.__copied = t; } },
+      });
+      return true;
+    })()`);
+    await click("copy-code");
+    return evaluate("window.__copied");
+  };
+  /** Lines the pane marked as having no faithful equivalent (§17b). */
+  const refusedLines = () =>
+    evaluate(
+      `[...document.querySelectorAll('[data-apollo-id="code-no-equivalent"]')].map((el) => el.textContent.replace(/^\\s*\\d+\\s*/, '').trim())`,
+    );
+
   const DATA_ROWS = [
     {
       // §11 declares TWO behaviours for this one input: the cost-sensitivity
@@ -1007,6 +1046,146 @@ try {
           agree,
           `screener="${screen.setup}" ${screen.symbol}/${screen.timeframe} | library=${lib?.symbol}/${lib?.timeframe} | citedReportExists=${reportExists}`,
         ];
+      },
+    },
+
+    // ------------------------------------------------- §17a/§17b code pane
+
+    {
+      // THE row for this increment. `Copy` read `pineSource` unconditionally,
+      // which was correct while one language existed and became the
+      // label-without-its-data defect the moment a second did. Asserted on
+      // MQL5 specifically: on Pine it passes whether or not the fix is real.
+      row: "copy copies what is shown",
+      setup: () => codePane("mql5"),
+      check: async () => {
+        const copied = (await copiedText()) ?? "";
+        const shown = await paneText();
+        const isMql5 = copied.includes("#property copyright") && copied.includes("CTrade trade;");
+        const notPine = !copied.includes("strategy.entry");
+        // And what came back is the very text on screen, not merely some
+        // other MQL5 — a Copy wired to the wrong buffer of the right language
+        // would still pass the two tests above.
+        const sameAsPane = copied.trim().length > 0 && shown.includes(copied.trim().split("\n")[0]);
+        return [
+          isMql5 && notPine && sameAsPane,
+          `copiedChars=${copied.length} looksMql5=${isMql5} carriesNoPine=${notPine} matchesPane=${sameAsPane}`,
+        ];
+      },
+    },
+    {
+      // Each language is a first-class BUFFER, not a re-labelled copy of the
+      // same text (§17a). Checked on the third language, and by exclusion:
+      // asserting only that thinkScript is present would pass on a pane that
+      // renders every language at once.
+      row: "each language is its own buffer",
+      setup: () => codePane("thinkscript"),
+      check: async () => {
+        const shown = await paneText();
+        const isThinkScript = shown.includes("AddOrder(OrderType.BUY_TO_OPEN") && shown.includes("plot EmaTrend");
+        const noPine = !shown.includes("strategy.entry");
+        const noMql5 = !shown.includes("CTrade trade;");
+        return [
+          isThinkScript && noPine && noMql5,
+          `thinkScript=${isThinkScript} pineAbsent=${noPine} mql5Absent=${noMql5}`,
+        ];
+      },
+    },
+    {
+      // §17b's POSITIVE rule. Two OPPOSED states, because the §18 empty-state
+      // lesson applies exactly here: a single assertion that the derived case
+      // says "derived" still passes on a pane that says "derived" always.
+      row: "canonical and derived differ",
+      setup: () => codePane(),
+      check: async () => {
+        const pine = await provenanceText();
+        await click("code-language");
+        await click("code-language-mql5");
+        const mql5 = await provenanceText();
+        const pineOk = /canonical/i.test(pine) && !/derived translation/i.test(pine);
+        // The derived side must name the language the numbers DID come from,
+        // not merely disclaim itself.
+        const mql5Ok = /derived translation/i.test(mql5) && /Pine v6/.test(mql5) && /never executed/i.test(mql5);
+        return [pineOk && mql5Ok && pine !== mql5, `pineSaysCanonical=${pineOk} mql5SaysDerived=${mql5Ok} differ=${pine !== mql5}`];
+      },
+    },
+    {
+      // Run switches to a chart showing the CANONICAL run, so leaving it live
+      // under a translation is the layout claiming that translation produced
+      // what appears next. Both states again — a permanently disabled Run
+      // would pass a one-sided check.
+      row: "run refuses a derived language",
+      setup: () => codePane(),
+      check: async () => {
+        const enabled = () => evaluate(`!document.querySelector('[data-apollo-id="run-code"]')?.disabled`);
+        const onPine = await enabled();
+        await click("code-language");
+        await click("code-language-mql5");
+        const onMql5 = await enabled();
+        await click("code-language");
+        await click("code-language-thinkscript");
+        const onThink = await enabled();
+        return [onPine && !onMql5 && !onThink, `pineEnabled=${onPine} mql5Enabled=${onMql5} thinkScriptEnabled=${onThink}`];
+      },
+    },
+    {
+      // §17b requires the refusal AT THE LINE, and it has to be reachable —
+      // a refusal nobody can reach is a claim, not a gate. Also ties the
+      // rendered marker to the clipboard: the warning is only worth anything
+      // if it survives the paste that carries the code away from us.
+      row: "no-equivalent marked at the line",
+      setup: () => codePane("mql5"),
+      check: async () => {
+        const marked = await refusedLines();
+        const copied = (await copiedText()) ?? "";
+        const inClipboard = marked.length > 0 && marked.every((line) => copied.includes(line));
+        // Canonical Pine is nobody's translation, so it must carry none.
+        await click("code-language");
+        await click("code-language-pine");
+        const onPine = await refusedLines();
+        return [
+          marked.length > 0 && inClipboard && onPine.length === 0,
+          `mql5MarkedLines=${marked.length} allSurviveCopy=${inClipboard} pineMarkedLines=${onPine.length}`,
+        ];
+      },
+    },
+    {
+      // The library card is the ONE surface where saved source and that run's
+      // own numbers sit together, so it is where a derived translation could
+      // end up beside figures it did not produce (§17b). The pane is left on
+      // MQL5 *before* the save — a save that captured the selection would show
+      // MQL5 here and this row is what makes that visible.
+      row: "a save captures the canonical",
+      setup: async () => {
+        await load();
+        await click("view-code");
+        await click("code-language");
+        await click("code-language-mql5");
+        await click("view-chart");
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("favourite-run");
+        await click("rail-history");
+      },
+      check: async () => {
+        // The card for THE RUN JUST SAVED, not merely the first card in the
+        // library. Taking the first one read a SEEDED card instead, and this
+        // row passed with the save deliberately broken — an assertion that
+        // could not fail on the defect it names. The seed excludes the loaded
+        // run by design, so its strategy name identifies the new save.
+        const r = await evaluate(`(() => {
+          const card = [...document.querySelectorAll('[data-apollo-id^="library-card-"]')]
+            .find((c) => /Sweep and Engulf/i.test(c.innerText));
+          if (!card) return null;
+          const el = card.querySelector('[data-apollo-id^="library-source-language-"]');
+          if (!el) return { label: null };
+          const src = card.querySelector('details pre')?.textContent ?? '';
+          return { label: el.innerText.trim(), pine: src.includes('strategy.entry'), mql5: src.includes('CTrade trade;') };
+        })()`);
+        if (!r) return [false, "the run just saved has no card in the library"];
+        if (!r.label) return [false, "the saved card carried no source-language label"];
+        const ok = /Pine v6/.test(r.label) && r.pine && !r.mql5;
+        return [ok, `label="${r.label}" savedSourceIsPine=${r.pine} savedSourceIsMql5=${r.mql5}`];
       },
     },
   ];

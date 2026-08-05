@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Archive, ArchiveRestore, GitBranch, Star } from "lucide-react";
 import { Chip, cx, Refusal, Signed } from "../ui";
 import { SORTS, type SavedRun, type SortId, warningsFor } from "../runs";
+import { CANONICAL, languageFor } from "../languages";
 
 /**
  * §15 — the Strategy Library. Ours; the reference has a star icon with nothing
@@ -216,6 +217,14 @@ function RunCard({
           className="cursor-pointer text-[11px] text-text-muted hover:text-text-primary"
         >
           Strategy source, as saved
+          {/* §17b — the card is the one surface where source and that run's own
+              numbers sit together, so it names the language rather than leaving
+              a reader to assume the pane's current selection produced these
+              figures. Read from the run, not from a constant. */}
+          <span data-apollo-id={`library-source-language-${run.id}`} className="ml-1.5 text-text-muted">
+            · {languageFor(run.sourceLanguage).label}
+            {run.sourceLanguage === CANONICAL && " · the source this run was executed from"}
+          </span>
         </summary>
         <pre className="mt-1.5 max-h-40 overflow-auto rounded bg-bg-elevated p-2 font-mono text-[10px] leading-[1.5] whitespace-pre-wrap text-text-secondary">
           {run.source.trim()}
