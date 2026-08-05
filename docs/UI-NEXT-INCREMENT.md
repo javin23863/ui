@@ -84,6 +84,16 @@ and must say so on screen — a save that silently evaporates on reload is worse
 
 ## §16. Screeners — what we are actually screening
 
+> **BUILT 2026-08-05** on `feat/screeners`. Two things the build settled:
+>
+> 1. **The Atlas table's seven rows are the commission — and five of them are POSITIVE render
+>    rules, not refusals.** A refusal ("censoring undeclared") and the rule it guards ("show
+>    unresolved / censored / excluded separately") are different requirements, and building only
+>    the refusal leaves the honest case unrendered.
+> 2. **The rest of the Atlas spec is engine contract and is deliberately NOT here.** No evidence
+>    states, no typed-error taxonomy, no Wilson computation, no report-schema validation. §15's
+>    prohibited-wording list binds the copy; it is not a feature to build.
+
 **Answer: not instruments. Conditions.** A conventional screener returns "stocks over their
 200-day MA". Ours returns **how a named setup has historically resolved, for this asset, in this
 session, at this point in the chart** — and refuses to state a rate it cannot support.

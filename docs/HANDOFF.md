@@ -49,7 +49,7 @@ npm i && npm run dev      # → http://localhost:5199
 | `consumer.ui-parity-spec` | **verify** — operator moves to done |
 | `consumer.ui-p6-gates` | **active** — PR #3 merged, awaiting the same |
 | `consumer.ui-strategy-library` | **verify** — §15 merged (PR #4), operator moves to done |
-| `consumer.ui-screeners` | **ready** — §16 |
+| `consumer.ui-screeners` | **active** — §16 built on `feat/screeners` |
 | `consumer.ui-indicator-representation` | **ready** — §17 |
 
 ---
@@ -70,7 +70,7 @@ The two browser gates need `npm run dev` on 5199 **and** a Chrome on CDP 9333:
 ```bash
 chrome --remote-debugging-port=9333 --user-data-dir=<scratch> --window-size=1920,1080
 node scripts/reflow.mjs   # 1440 + 1280, asserts, exits non-zero
-node scripts/sweep.mjs    # 20-row empty-state sweep, asserts, exits non-zero
+node scripts/sweep.mjs    # 33-row empty-state sweep, asserts, exits non-zero
 node scripts/parity.mjs   # regenerates the seven side-by-side sheets
 ```
 
