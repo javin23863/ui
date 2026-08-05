@@ -1,7 +1,7 @@
 # TraderCockpit UI — next increment (post-P6)
 
-**Status:** filed 2026-08-05 from operator direction. **§15 is BUILT and MERGED to `main`** (PR #4,
-see `hot.md`); §16 and §17 are still plan only.
+**Status:** filed 2026-08-05 from operator direction. **§15 and §16 are BUILT and MERGED to `main`**
+(PRs #4 and #5, see `hot.md`); §17 is still plan only.
 **Why this document exists:** `UI-PARITY-SPEC.md` ends at P6 and defines no P7. plan-warden ruled
 that once P6 is signed off the plan is exhausted and the next increment must come from the operator
 rather than being picked. It now has. This is that increment.
@@ -84,7 +84,7 @@ and must say so on screen — a save that silently evaporates on reload is worse
 
 ## §16. Screeners — what we are actually screening
 
-> **BUILT 2026-08-05** on `feat/screeners`. Two things the build settled:
+> **BUILT and MERGED 2026-08-05** (PR #5). Two things the build settled:
 >
 > 1. **The Atlas table's seven rows are the commission — and five of them are POSITIVE render
 >    rules, not refusals.** A refusal ("censoring undeclared") and the rule it guards ("show

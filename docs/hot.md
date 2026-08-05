@@ -12,13 +12,13 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
-## ▶ §16 Screeners — on `feat/screeners`, not yet merged
+## §16 Screeners — MERGED TO MAIN 2026-08-05
 
 | | |
 |---|---|
-| Branch | `feat/screeners`, worktree `C:\tmp\ui-screeners` |
+| PR #5 | `feat/screeners` → **MERGED** at `8e528f1`. Greptile clean at that head, round 2, zero findings. |
 | Spec | `docs/UI-NEXT-INCREMENT.md` §16 · contract `Documents/tradercockpit/research/edgeful-concept-behavior-atlas-spec-2026-08-02.md` |
-| Card | `consumer.ui-screeners` — **active** |
+| Card | `consumer.ui-screeners` — **verify**; operator moves it to done |
 | plan-warden | ON PLAN WITH CORRECTIONS — five blocking drops, all applied |
 | Gates | sweep **33/33**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, parity regenerated |
 | Greptile | round 1 found **one P1, real, fixed** — see below |

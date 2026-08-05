@@ -12,8 +12,8 @@ Quant). It is **UI only** — there is no LLM, no Pine compilation, no market da
 engine, deliberately. Everything renders from one seeded fixture.
 
 The parity plan is **finished**: P0–P6, all merged to `main`, all gates green. Of the next
-increment, **§15 Strategy Library is merged to `main`** (PR #4); §16 and §17 are specced but not
-built.
+increment, **§15 Strategy Library and §16 Screeners are merged to `main`** (PRs #4 and #5); §17 is
+specced but not built.
 
 ```bash
 git clone https://github.com/javin23863/ui && cd ui
@@ -49,7 +49,7 @@ npm i && npm run dev      # → http://localhost:5199
 | `consumer.ui-parity-spec` | **verify** — operator moves to done |
 | `consumer.ui-p6-gates` | **active** — PR #3 merged, awaiting the same |
 | `consumer.ui-strategy-library` | **verify** — §15 merged (PR #4), operator moves to done |
-| `consumer.ui-screeners` | **active** — §16 built on `feat/screeners` |
+| `consumer.ui-screeners` | **verify** — §16 merged (PR #5), operator moves to done |
 | `consumer.ui-indicator-representation` | **ready** — §17 |
 
 ---
