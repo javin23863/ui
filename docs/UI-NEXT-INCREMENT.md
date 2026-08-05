@@ -212,6 +212,28 @@ authored in:
   emitting code that looks right and behaves differently. Silent approximation in a strategy
   language is the worst failure mode available here.
 
+> **Amendment 2026-08-05 — "rather than" carries two acts, and the marker does both.** The sentence
+> above reads as *marker instead of code*, which is right only when the construct is **absent** in
+> the target language. MQL5's three markers are that case: no constrained option lists, no implicit
+> position size, an EA cannot plot — there is nothing to emit, so the marker stands in its place.
+> The thinkScript bracket is the other case, and this increment is what decided it. The construct is
+> **present** — `rec longStop` and `rec longTarget` are emitted and are correct on the entry bar —
+> but Pine's guard around it is unwritable, because Pine assigns those floats only inside its
+> flat-entry block (`strategy.position_size == 0`) and a study cannot read its own position size. So
+> a second qualifying signal replaces an open position's stop and target. There the marker sits
+> **beside** the emitted code and names the consequence at the line.
+>
+> The ruling: a marker replaces code where the construct is absent, and annotates code where the
+> construct is present but its guard is not. **Do not read "rather than" as licence to delete an
+> emitted-and-marked construct** — deleting the thinkScript bracket would leave a translation with no
+> exits at all, which is a worse lie than one with a documented divergence.
+>
+> Why not simply write the guard: a study-side position state machine reconstructed from this
+> script's own entries and exits is a *reimplementation of broker state*, not a translation of what
+> Pine's source says, and this increment cannot compile or execute either language (below) — so it
+> would ship as an unvalidated approximation, which is the exact failure mode the clause above names.
+> Greptile's round-2 P1 offered both options and this is the one taken, on the record.
+
 **Out of scope for this increment:** actually *compiling* or *executing* either language, and any
 automated Pine→MQL5 transpiler. Capabilities remain out of scope (§0). The UI work is the selector,
 the per-language buffers, the canonical/derived labelling, and the refusals.

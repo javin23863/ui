@@ -12,16 +12,16 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
-## ▶ §17a/§17b The code pane becomes multi-language — on `feat/code-pane-languages`, not yet merged
+## §17a/§17b The code pane becomes multi-language — MERGED TO MAIN 2026-08-05
 
 | | |
 |---|---|
-| PR | **[#7](https://github.com/javin23863/ui/pull/7)** — OPEN. CI `gates` SUCCESS at `55c2ddd`. **Round 1 (at `69094f1`): 4/5, two P1s, both real, both fixed. Round 2 (at `55c2ddd`): ONE P1, and it says round 1's latch was half a fix — a later signal still replaces an open bracket. Fixed and re-review owed at the new head.** The `Greptile Review` *check* reads `fail` on a confidence threshold, not a verdict — read the body. Trap #2 in `HANDOFF.md` applies — a clean pass creates no review object and no comments, so poll the PR **body** for its `Reviews (N)` line, not the reviews endpoint. |
-| Branch | `feat/code-pane-languages`, worktree `C:\tmp\ui-code-pane-languages` |
+| PR #7 | `feat/code-pane-languages` → **MERGED** at `041d1d3`. CI `gates` SUCCESS at that head. **Rounds 1–2, three P1s, all real, all fixed; round 3 clean.** |
+| Greptile | **Round 1 (`69094f1`): 4/5, two P1s. Round 2 (`55c2ddd`): one P1 — round 1's latch was half a fix. Round 3 (`041d1d3`): 5/5, no findings.** The PR body's `Last reviewed commit` reads `041d1d3` and its summary describes THIS diff — three buffers, provenance, `Run` refusal, dropdown dismissal — which is what makes the pass an authorization rather than a number (`feedback_greploop_merge_authorization`: a 5/5 that reviewed another PR is void). The `Greptile Review` *check* read `fail` on rounds 1–2 against a confidence threshold, not a verdict — read the body. Trap #2 in `HANDOFF.md` applies: a clean pass creates no review object and no inline comments, so poll the body's `Reviews (N)` line, never the reviews endpoint. **This repo's regime is that delegation, not the futures adversarial-review rubric — the 5/5 is a pass, not a grade.** |
 | Spec | `docs/UI-NEXT-INCREMENT.md` §17a/§17b, amendments recorded **in a commit of their own, before any code** |
-| Cards | `consumer.ui-indicator-representation` — **active**, now 17a/17b only; §17c **and §17d's per-run engine field** split out to `consumer.ui-indicator-families` (inbox), where the engine deferral is acceptance row 6 — stated once on the card, with the `notes` field pointing to it rather than restating it. §17d in `UI-NEXT-INCREMENT.md` keeps the plan-side record; that is not duplication and must not be deleted as such. |
-| plan-warden | ON PLAN WITH CORRECTIONS — six blocking, all applied |
-| Gates | sweep **49/49**, reflow PASS at 1440 + 1280, palette 20/20, `tsc -b` clean, `build` clean, seven parity sheets regenerated |
+| Cards | `consumer.ui-indicator-representation` — **verify**, now 17a/17b only; §17c **and §17d's per-run engine field** split out to `consumer.ui-indicator-families` (inbox), where the engine deferral is acceptance row 6 — stated once on the card, with the `notes` field pointing to it rather than restating it. §17d in `UI-NEXT-INCREMENT.md` keeps the plan-side record; that is not duplication and must not be deleted as such. |
+| plan-warden | passes 1–3 during the wave, six blocking, all applied; **pass 4 before merge: ON PLAN WITH CORRECTIONS, four blocking, all documentation — this row, the §17b amendment, the round-3 receipt above, and the flake card's scope. All applied.** |
+| Gates | sweep **49/49 — the wave delta is 41 → 49**, eight rows added and none removed; reflow PASS at 1440 + 1280, palette 20/20, `tsc -b` clean, `build` clean, seven parity sheets regenerated |
 
 The pane rendered Pine and only Pine, so a strategy in this cockpit was unusable to every trader
 not on TradingView. It now carries **`Pine v6` · `MQL5` · `thinkScript`**, each a real hand-written
@@ -136,14 +136,28 @@ and the rendered buffer all read from it — the same shape as `presentedRowsFor
 > line, never the exit code alone. `node --check scripts/sweep.mjs` before and after any edit to a
 > row — the gate's own syntax is not covered by any gate.
 
-> **Known-flaky row, not fixed here — `11 trades → Thin sample chip`.** It failed once on the first
-> sweep after a source edit forced a vite re-transform, then passed on immediate re-run. Two causes at
-> `scripts/sweep.mjs:98`: `click()` waits a fixed 850 ms rather than for an expected state, so it
-> loses under load; and it returns `'MISSING'` when the element is absent, which `analysisUnder`
-> discards — a missed `profile-thin` click is silent and the row then reads the *previous* profile's
-> text. That second one is the serious half: it is a row that can pass on stale state. Left alone
-> deliberately — it is outside §17a/§17b and wants its own card, not a drive-by fix inside a feature
-> PR.
+> **The shared `click()` can pass a row on stale state — card `defect.ui-sweep-click-flake`, inbox.**
+> Surfaced as one flaky row (`11 trades → Thin sample chip`, failed on the first sweep after a source
+> edit forced a vite re-transform, passed on immediate re-run) but **it is not that row's defect**.
+> `scripts/sweep.mjs:98` is the primitive every row goes through: `click()` waits a fixed 850 ms
+> rather than for an expected state, so it loses under load, and it returns `'MISSING'` when the
+> element is absent — which every caller discards. `analysisUnder` discards it, and so does
+> `codePane()`, which selects a language through **two** unchecked clicks. So §17's own receipts —
+> `copy copies what is shown`, `each language is its own buffer`, `canonical and derived differ`,
+> `run refuses a derived language`, `no-equivalent marked at the line` — are consumers of the defect,
+> not bystanders to it.
+>
+> Most stale reads fail closed: a missed click leaves Pine, and the derived rows assert against Pine,
+> so they go red. The direction that can pass wrongly is **derived → derived** — a missed thinkScript
+> click while MQL5 is still shown. That is a live direction, not a theoretical one: it is exactly why
+> `no-equivalent marked at the line` names the bracket construct instead of counting markers, since a
+> count of 3 is true of both buffers.
+>
+> The fix is deferred, not the record. A drive-by harness change inside a feature PR is how scope
+> creep enters (`HANDOFF.md` house rules), and §17c's rule applies to the deferral itself: *an item
+> deferred without a record becomes the item nobody mentions again*. **This wave fixed `useDismiss` as
+> a class and very nearly filed its sibling as an instance in the same document** — the write-up above
+> named one row where the defect is one primitive with every row downstream of it.
 
 ---
 
