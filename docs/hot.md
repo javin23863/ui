@@ -12,15 +12,15 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
-## §17a/§17b The code pane becomes multi-language — MERGED TO MAIN 2026-08-05
+## ▶ §17a/§17b The code pane becomes multi-language — on `feat/code-pane-languages`, BLOCKED at round 4
 
 | | |
 |---|---|
-| PR #7 | `feat/code-pane-languages` → **MERGED** at `041d1d3`. CI `gates` SUCCESS at that head. **Rounds 1–2, three P1s, all real, all fixed; round 3 clean.** |
-| Greptile | **Round 1 (`69094f1`): 4/5, two P1s. Round 2 (`55c2ddd`): one P1 — round 1's latch was half a fix. Round 3 (`041d1d3`): 5/5, no findings.** The PR body's `Last reviewed commit` reads `041d1d3` and its summary describes THIS diff — three buffers, provenance, `Run` refusal, dropdown dismissal — which is what makes the pass an authorization rather than a number (`feedback_greploop_merge_authorization`: a 5/5 that reviewed another PR is void). The `Greptile Review` *check* read `fail` on rounds 1–2 against a confidence threshold, not a verdict — read the body. Trap #2 in `HANDOFF.md` applies: a clean pass creates no review object and no inline comments, so poll the body's `Reviews (N)` line, never the reviews endpoint. **This repo's regime is that delegation, not the futures adversarial-review rubric — the 5/5 is a pass, not a grade.** |
+| PR #7 | `feat/code-pane-languages` — **OPEN, not merged.** CI `gates` SUCCESS at `8b06589`. **Rounds 1–2: three P1s, all real, all fixed. Round 3 (`041d1d3`): 5/5 clean. Round 4 (`8b06589`): 4/5, NEW P1, "not safe to merge" — see below. Awaiting an operator ruling; do not merge.** |
+| Greptile | The `Greptile Review` *check* reads `fail` on a confidence threshold, not a verdict — read the body. Trap #2 in `HANDOFF.md` applies: a clean pass creates no review object and no inline comments, so poll the body's `Reviews (N)` line, never the reviews endpoint. **This repo's regime is that delegation, not the futures adversarial-review rubric — a 5/5 is a pass, not a grade.** A pass authorizes only if its summary describes THIS diff (`feedback_greploop_merge_authorization`: a 5/5 that reviewed another PR is void); round 3's did. |
 | Spec | `docs/UI-NEXT-INCREMENT.md` §17a/§17b, amendments recorded **in a commit of their own, before any code** |
 | Cards | `consumer.ui-indicator-representation` — **verify**, now 17a/17b only; §17c **and §17d's per-run engine field** split out to `consumer.ui-indicator-families` (inbox), where the engine deferral is acceptance row 6 — stated once on the card, with the `notes` field pointing to it rather than restating it. §17d in `UI-NEXT-INCREMENT.md` keeps the plan-side record; that is not duplication and must not be deleted as such. |
-| plan-warden | passes 1–3 during the wave, six blocking, all applied; **pass 4 before merge: ON PLAN WITH CORRECTIONS, four blocking, all documentation — this row, the §17b amendment, the round-3 receipt above, and the flake card's scope. All applied.** |
+| plan-warden | passes 1–3 during the wave, six blocking, all applied; **pass 4 before merge: ON PLAN WITH CORRECTIONS, four blocking, all documentation — the §17b amendment, this block's merge state, the round-3 receipt, and the flake card's scope. All applied.** |
 | Gates | sweep **49/49 — the wave delta is 41 → 49**, eight rows added and none removed; reflow PASS at 1440 + 1280, palette 20/20, `tsc -b` clean, `build` clean, seven parity sheets regenerated |
 
 The pane rendered Pine and only Pine, so a strategy in this cockpit was unusable to every trader
@@ -135,6 +135,30 @@ and the rendered buffer all read from it — the same shape as `presentedRowsFor
 > executed**. The durable rule, now in `HANDOFF.md` trap #5: read the `N/N` line and the final stdout
 > line, never the exit code alone. `node --check scripts/sweep.mjs` before and after any edit to a
 > row — the gate's own syntax is not covered by any gate.
+
+> **Round 4 at `8b06589` — `Previous Candle Direction` is a control that does nothing, in ALL FOUR
+> sources. BLOCKS THE MERGE, and the decision is the operator's.** `prevDir` is declared at
+> `src/fixtures/market.ts:442` and referenced nowhere in the canonical Pine: `bullSweep` and
+> `bearSweep` never consult it, so `Any` and `Same Direction` produce identical eligibility. Verified
+> by reading the source, not taken from the review. My MQL5 (`InpPrevDir`) and thinkScript
+> (`prevDir`) buffers reproduce that input faithfully — and **faithfulness is §17b's bar**, so
+> deleting it from the translations while canonical Pine keeps it would make them *less* correct, not
+> more. The defect is upstream of the translations and predates this PR; what this PR did was
+> propagate one dead input into three.
+>
+> Two fixes, materially different, and **only one of them is mine to pick**:
+> *Delete the input* — behaviour-preserving, since it is already a no-op, but it removes a knob from
+> the strategy of record. *Implement the filter* — restores a real signal filter, changes which bars
+> qualify, and means the displayed canonical source would describe a strategy the run's 47 synthetic
+> trades never applied, which is the §17b sin pointed the other way. Which is right turns on a fact
+> only the operator holds: whether the real TradingView strategy implements this filter and our
+> fixture is an incomplete transcription, or whether the input was always vestigial. Asked, not
+> assumed.
+>
+> This is the same defect class as the seven the build has already bought — **a label that moves
+> without its data** — in its eighth form: a control that renders, offers two values, and changes
+> nothing. `HANDOFF.md`'s house rule says every panel must be able to say no; an input that cannot
+> say anything at all is the weaker version of the same failure.
 
 > **The shared `click()` can pass a row on stale state — card `defect.ui-sweep-click-flake`, inbox.**
 > Surfaced as one flaky row (`11 trades → Thin sample chip`, failed on the first sweep after a source
