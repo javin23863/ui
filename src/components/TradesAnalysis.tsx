@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { CostCurve, DurationHistogram, MaeMfeScatter, RDistribution } from "./charts";
 import { Card, Chip, cx, KpiStrip, Refusal, Signed } from "../ui";
-import { factsForProfile, type Profile, PROFILES, rowsFor, warningsFor } from "../runs";
+import { factsForProfile, type Profile, PROFILES, presentedRowsFor, warningsFor } from "../runs";
 
 // §8c — OUR tab. The reference never opens it, so nothing here is parity.
 // Design rule: every panel must be able to say no. The `profile` switch below
@@ -27,7 +27,12 @@ export default function TradesAnalysis({
   setProfile: (p: Profile) => void;
 }) {
 
-  const rows = useMemo(() => rowsFor(profile), [profile]);
+  // PRESENTED rows, not raw. The IS/OOS table, the regime table and the
+  // distributions all total `t.net`, so under a profile that does not model
+  // costs they must total the same cost-free values the KPI strip and the
+  // Trades Log report. Reading raw rows here left the IS/OOS split summing to
+  // +1,999.70 beside a Net Profit of +2,587.70 for the same run.
+  const rows = useMemo(() => presentedRowsFor(profile), [profile]);
   // Declared by the run AND actually populated. The thin-sample profile declares
   // a holdout that no trade lands in, and the panel rendered 0.00 / 0.0% / a
   // −54.5 pp delta against it — reporting that the strategy scored zero out of

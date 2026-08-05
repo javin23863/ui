@@ -70,7 +70,7 @@ The two browser gates need `npm run dev` on 5199 **and** a Chrome on CDP 9333:
 ```bash
 chrome --remote-debugging-port=9333 --user-data-dir=<scratch> --window-size=1920,1080
 node scripts/reflow.mjs   # 1440 + 1280, asserts, exits non-zero
-node scripts/sweep.mjs    # 18-row empty-state sweep, asserts, exits non-zero
+node scripts/sweep.mjs    # 19-row empty-state sweep, asserts, exits non-zero
 node scripts/parity.mjs   # regenerates the seven side-by-side sheets
 ```
 

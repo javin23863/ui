@@ -466,6 +466,42 @@ try {
       },
     },
     {
+      // The IS/OOS split is the same run cut in two, so its halves must add up
+      // to the run's own net. Under no-costs the split still totalled +1,999.70
+      // beside a Net Profit of +2,587.70 — the panel had cost-free KPIs above a
+      // cost-deducted table, in the same tab.
+      row: "no-costs IS/OOS sums to the run",
+      setup: async () => {
+        await load();
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("profile-no-costs");
+      },
+      check: async () => {
+        const r = await evaluate(`(() => {
+          const num = (s) => Number(String(s).replace(/\\u2212/g, '-').replace(/[^0-9.-]/g, ''));
+          const cells = [...document.querySelectorAll('div')];
+          const netLabel = cells.find((d) => d.textContent.trim() === 'Net' && d.className.includes('border-t'));
+          if (!netLabel) return null;
+          const sibs = [...netLabel.parentElement.children];
+          const i = sibs.indexOf(netLabel);
+          const is = num(sibs[i + 1]?.textContent), oos = num(sibs[i + 2]?.textContent);
+          const kpi = cells.find((d) => d.children.length === 2 && /^TRADES$/i.test(d.children[0]?.textContent?.trim() ?? ''));
+          return { is, oos, kpiPresent: !!kpi };
+        })()`);
+        if (!r) return [false, "IS/OOS Net row not found"];
+        await click("tab-performance");
+        const panelNet = await evaluate(`(() => {
+          const rows = [...document.querySelectorAll('dl > div')];
+          const d = rows.find((x) => x.querySelector('dt')?.textContent.trim() === 'Net Profit');
+          return d ? Number(d.querySelector('dd').textContent.replace(/\\u2212/g, '-').replace(/[^0-9.-]/g, '')) : NaN;
+        })()`);
+        const sum = r.is + r.oos;
+        const ok = Number.isFinite(panelNet) && Math.abs(sum - panelNet) < 0.05;
+        return [ok, `IS=${r.is} + OOS=${r.oos} = ${sum.toFixed(2)} vs Net Profit ${panelNet} → ${ok ? "reconciles" : "DISAGREE"}`];
+      },
+    },
+    {
       // The same strategy under a different profile is a different run. Saving
       // one must not make the star claim the other is already kept.
       row: "another profile saves separately",

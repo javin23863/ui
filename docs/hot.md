@@ -20,8 +20,8 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Spec | `docs/UI-NEXT-INCREMENT.md` §15 |
 | Card | `consumer.ui-strategy-library` — **active** |
 | plan-warden | ON PLAN WITH CORRECTIONS, all four applied (see below) |
-| Gates | sweep **18/18**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
-| Greptile | rounds 1–3 found **four P1s, all real, all fixed** — see below |
+| Gates | sweep **19/19**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
+| Greptile | rounds 1–4 found **five P1s, all real, all fixed** — see below |
 
 Reachable from the rail's `History` button. Star in the backtest header saves the run **as shown**,
 so an entry's numbers and its adequacy chips come from the same profile the reader is looking at.
@@ -97,17 +97,31 @@ both take their rows from it. Correct value is 194%.
 > mutated reads `ledger=194% panel=249% card=249%` and fails. **Two surfaces agreeing is not
 > evidence when one call feeds both.**
 
+**Round 4 found the last one, in the same tab as the round-2 fix.** `TradesAnalysis` still took its
+rows from `rowsFor(profile)`, so under `no-costs` the IS/OOS split summed to **+1,999.70** directly
+below a KPI strip reading **+2,587.70** — cost-free headline over a cost-deducted table, in one
+view. The panel now reads `presentedRowsFor(profile)` like everything else. Row
+`no-costs IS/OOS sums to the run` asserts the two halves reconcile to the run's own net; mutated it
+reads `IS=2555.22 + OOS=-555.52 = 1999.70 vs Net Profit 2587.7 → DISAGREE`.
+
+> **Four of the five findings were the same defect, and each fix revealed the next one.** The
+> profile changed which rows a surface should read, and every surface that had quietly kept its own
+> copy of "the rows" surfaced in turn: the saved card, the Performance tab, the saved facts, the
+> IS/OOS table. `presentedRowsFor(profile)` — slice **and** cost treatment — is now the only
+> answer to "which rows is this run". If a sixth surface ever needs rows, that is the call, and a
+> new `rowsFor`/`trades` reference in a panel should be read as a bug on sight.
+
 > **Do not read "this profile is only a demo switch" as permission to leave it inconsistent.** The
 > profile switch is what makes every refusal in this build demonstrable. A run profile that two
 > panels disagree about is a broken instrument, and it stayed broken because nothing asserted
 > agreement BETWEEN panels — only that each panel said no on its own.
 
-Greptile ran all four in a browser and attached the recordings; **our own sweep had 15 green rows
-and caught none of them**. Three rows added so none can come back — `save keeps its own profile numbers`,
-`another profile saves separately` and `no-costs figures agree everywhere` — each mutation-proven by
-restoring the exact bug it guards.
+Greptile ran all five in a browser and attached the recordings; **our own sweep had 15 green rows
+and caught none of them**. Four rows added so none can come back — `save keeps its own profile numbers`,
+`another profile saves separately`, `no-costs figures agree everywhere` and
+`no-costs IS/OOS sums to the run` — each mutation-proven by restoring the exact bug it guards.
 The lesson is narrow and worth keeping: **every row of the sweep asserted a refusal, and not one of
-the four defects was a refusal.** A panel that says no correctly can still put the wrong number on
+the five defects was a refusal.** A panel that says no correctly can still put the wrong number on
 the screen, and two panels can each be correct on their own while contradicting each other.
 
 **Proven by mutation 2026-08-05**, all five original rows at once: seed unconditionally → `cards=5`;
@@ -153,7 +167,7 @@ npx tsc -b                # clean
 npm run build             # clean
 node scripts/parity.mjs   # regenerates all seven parity sheets
 node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
-node scripts/sweep.mjs    # empty-state sweep, 18 rows, asserts and exits non-zero
+node scripts/sweep.mjs    # empty-state sweep, 19 rows, asserts and exits non-zero
 ```
 
 The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:
