@@ -21,11 +21,21 @@ export default function Workspace({
   chatCollapsed,
   onSaveRun,
   isRunSaved,
+  symbol,
+  timeframe,
+  onSymbol,
+  onTimeframe,
 }: {
   title: string;
   hasStrategy: boolean;
   onCollapseChat: () => void;
   chatCollapsed: boolean;
+  /** The chart identity is owned by App: the Screener's "scope to the loaded
+   *  chart" has to mean the chart actually on screen, not a seeded constant. */
+  symbol: string;
+  timeframe: string;
+  onSymbol: (s: string) => void;
+  onTimeframe: (t: string) => void;
   onSaveRun?: (profile: Profile) => void;
   isRunSaved?: (profile: Profile) => boolean;
 }) {
@@ -33,9 +43,9 @@ export default function Workspace({
   const [settings, setSettings] = useState(false);
   const [copyState, setCopyState] = useState<"idle" | "ok" | "fail">("idle");
   const [tfOpen, setTfOpen] = useState(false);
-  const [timeframe, setTimeframe] = useState<string>(summary.timeframe);
   const [picker, setPicker] = useState(false);
-  const [symbol, setSymbol] = useState(summary.symbol);
+  const setTimeframe = onTimeframe;
+  const setSymbol = onSymbol;
   // Trade the chart is focused on, set by a Trades Log row click (§8d).
   const [focus, setFocus] = useState<{ n: number; entryTime: number; exitTime: number } | null>(null);
 

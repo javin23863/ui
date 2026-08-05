@@ -20,7 +20,8 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Spec | `docs/UI-NEXT-INCREMENT.md` §16 · contract `Documents/tradercockpit/research/edgeful-concept-behavior-atlas-spec-2026-08-02.md` |
 | Card | `consumer.ui-screeners` — **active** |
 | plan-warden | ON PLAN WITH CORRECTIONS — five blocking drops, all applied |
-| Gates | sweep **32/32**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, parity regenerated |
+| Gates | sweep **33/33**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, parity regenerated |
+| Greptile | round 1 found **one P1, real, fixed** — see below |
 
 Reachable from the rail's `Screener` button. Screens **conditions, not instruments**: how a named
 setup has resolved before, for this asset in this session — and it refuses to state a rate it
@@ -75,6 +76,15 @@ forecast wording.
 **Proven by mutation**, twelve new rows in two batches: disabling `refusalFor` flipped exactly the
 five refusal rows and left 27 green; breaking the six render rules plus the chart-linked scope
 flipped exactly those seven and left 25 green.
+
+**Greptile round 1: the chart-linked scope was a label over a constant.** The checkbox read
+"Scope to the loaded chart (XAUUSD · 4h)" from `RUN_SYMBOL`/`RUN_TIMEFRAME`, while the chart's real
+symbol lived in `Workspace` state — so switching the chart to BTCUSD still offered an XAUUSD report
+as though it were scoped to what was on screen. **This build's defect class, in a checkbox.** The
+chart identity now lives in `App` and is passed to both panes, so the label and the filter read the
+same value. Row `chart-linked follows the real chart` switches the ticker and asserts the label, the
+offered list and the refusal all follow; mutated back to the constant it reads
+`label="…(XAUUSD · 4h)" offered=["London open sweep"] refusesForBTCUSD=false`.
 
 > **One of my own assertions was decorative and the mutation is what exposed it.** The
 > divide-by-zero row also grepped the whole panel for a stray dash or `Infinity`; when the value
@@ -285,7 +295,7 @@ npx tsc -b                # clean
 npm run build             # clean
 node scripts/parity.mjs   # regenerates all seven parity sheets
 node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
-node scripts/sweep.mjs    # empty-state sweep, 32 rows, asserts and exits non-zero
+node scripts/sweep.mjs    # empty-state sweep, 33 rows, asserts and exits non-zero
 ```
 
 The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:

@@ -765,6 +765,39 @@ try {
       },
     },
     {
+      // "Scope to the loaded chart" has to mean the chart actually on screen.
+      // The scope read a seeded constant while the label claimed to follow the
+      // chart, so switching to BTCUSD still offered an XAUUSD report as though
+      // it were scoped — the label-without-its-data defect, in a checkbox.
+      row: "chart-linked follows the real chart",
+      setup: async () => {
+        await load();
+        // Change the chart away from the seeded instrument first.
+        await click("symbol-picker");
+        await click("ticker-cat-crypto");
+        await click("ticker-btcusd");
+        await click("rail-screener");
+        await click("screener-chart-linked");
+      },
+      check: async () => {
+        const label = await evaluate(
+          `[...document.querySelectorAll('label')].find((l) => /Scope to the loaded chart/.test(l.textContent))?.textContent?.trim() ?? ''`,
+        );
+        const offered = await evaluate(
+          `[...document.querySelectorAll('button[data-apollo-id^="screener-report-"]')].map((b) => b.textContent.trim())`,
+        );
+        const t = await evaluate(`document.querySelector('[data-apollo-id="screener"]')?.innerText ?? ''`);
+        const labelFollows = /BTCUSD/.test(label) && !/XAUUSD/.test(label);
+        // No XAUUSD-only report may be offered as "scoped to" a BTCUSD chart.
+        const noForeignReport = !offered.includes("London open sweep");
+        const refuses = /No report covers BTCUSD/i.test(t);
+        return [
+          labelFollows && noForeignReport && refuses,
+          `label="${label}" offered=${JSON.stringify(offered)} refusesForBTCUSD=${refuses}`,
+        ];
+      },
+    },
+    {
       row: "screener states it is fixture data",
       setup: () => screener("ib-breakout"),
       check: async () => {

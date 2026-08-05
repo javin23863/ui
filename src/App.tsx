@@ -62,6 +62,11 @@ export default function App() {
   // Which pane the right-hand side is showing. The rail drives it; "workspace"
   // is the chart/code/backtest surface.
   const [pane, setPane] = useState<"workspace" | "library" | "screener">("workspace");
+  // The chart the cockpit is showing. Owned here because two panes read it: the
+  // workspace renders it, and the Screener's chart-linked scope claims to follow
+  // it. Held in Workspace, that claim was a label over a constant.
+  const [symbol, setSymbol] = useState(summary.symbol);
+  const [timeframe, setTimeframe] = useState(summary.timeframe);
 
   // Identity includes the PROFILE. The same strategy, instrument and timeframe
   // under a different profile is a different run with different trades and
@@ -152,7 +157,7 @@ export default function App() {
           <div className="min-h-0 min-w-0 flex-1 pl-4">
             {pane === "screener" ? (
               <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">
-                <Screener />
+                <Screener symbol={symbol} timeframe={timeframe} />
               </section>
             ) : pane === "library" ? (
               <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">
@@ -171,6 +176,10 @@ export default function App() {
                 onCollapseChat={() => setCollapsed((c) => !c)}
                 onSaveRun={saveRun}
                 isRunSaved={isRunSaved}
+                symbol={symbol}
+                timeframe={timeframe}
+                onSymbol={setSymbol}
+                onTimeframe={setTimeframe}
               />
             )}
           </div>

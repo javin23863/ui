@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { Radar } from "lucide-react";
 import { ClassFrequencyBars } from "./charts";
 import { Card, Chip, cx, Refusal } from "../ui";
-import { RUN_SYMBOL, RUN_TIMEFRAME } from "../fixtures/market";
 import { REPORTS } from "../fixtures/reports";
 import {
   classRowsFor,
@@ -23,7 +22,7 @@ import {
  * Concept Behavior Atlas v1; the engine behind it does not exist yet and
  * nothing here pretends otherwise.
  */
-export default function Screener() {
+export default function Screener({ symbol, timeframe }: { symbol: string; timeframe: string }) {
   const [id, setId] = useState(REPORTS[0].id);
   const [chartLinked, setChartLinked] = useState(false);
 
@@ -32,8 +31,8 @@ export default function Screener() {
   // job, and a panel that silently rescaled someone else's numbers would be
   // inventing a result.
   const offered = useMemo(
-    () => (chartLinked ? REPORTS.filter((r) => r.symbol === RUN_SYMBOL) : REPORTS),
-    [chartLinked],
+    () => (chartLinked ? REPORTS.filter((r) => r.symbol === symbol) : REPORTS),
+    [chartLinked, symbol],
   );
   const report = offered.find((r) => r.id === id) ?? offered[0];
 
@@ -54,7 +53,7 @@ export default function Screener() {
               onChange={(e) => setChartLinked(e.target.checked)}
               className="accent-accent"
             />
-            Scope to the loaded chart ({RUN_SYMBOL} · {RUN_TIMEFRAME})
+            Scope to the loaded chart ({symbol} · {timeframe})
           </label>
         </div>
         <p className="mt-2 text-[11px] text-text-muted" data-apollo-id="screener-fixture-notice">
@@ -64,10 +63,10 @@ export default function Screener() {
       </header>
 
       <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 pt-3 pb-6" style={{ gridTemplateColumns: "200px 1fr" }}>
-        <LeftRail reports={offered} selected={report} onSelect={setId} chartLinked={chartLinked} />
+        <LeftRail reports={offered} selected={report} onSelect={setId} chartLinked={chartLinked} symbol={symbol} />
         {report ? <ReportView report={report} /> : (
           <Refusal>
-            No report covers {RUN_SYMBOL} in this session. Scoping to the chart cannot borrow another
+            No report covers {symbol} in this session. Scoping to the chart cannot borrow another
             instrument's history — a rate measured on a different market is a different claim.
           </Refusal>
         )}
@@ -81,11 +80,13 @@ function LeftRail({
   selected,
   onSelect,
   chartLinked,
+  symbol,
 }: {
   reports: Report[];
   selected: Report | undefined;
   onSelect: (id: string) => void;
   chartLinked: boolean;
+  symbol: string;
 }) {
   return (
     <aside className="flex flex-col gap-3 text-[11px]">
@@ -108,7 +109,7 @@ function LeftRail({
             </li>
           ))}
           {!reports.length && (
-            <li className="px-2 py-1 text-text-muted">No report matches {RUN_SYMBOL}.</li>
+            <li className="px-2 py-1 text-text-muted">No report matches {symbol}.</li>
           )}
         </ul>
       </div>
@@ -131,7 +132,7 @@ function LeftRail({
 
       {chartLinked && (
         <p className="text-text-muted">
-          Showing only reports measured on {RUN_SYMBOL}. Scoping filters which reports apply; it does
+          Showing only reports measured on {symbol}. Scoping filters which reports apply; it does
           not rescale a report's counts.
         </p>
       )}
