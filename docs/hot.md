@@ -12,13 +12,13 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
-## ▶ §18 The screening surface is two surfaces — on `feat/setup-screener`, not yet merged
+## §18 The screening surface is two surfaces — MERGED TO MAIN 2026-08-05
 
 | | |
 |---|---|
-| Branch | `feat/setup-screener`, worktree `C:\tmp\ui-setup-screener` |
+| PR #6 | `feat/setup-screener` → **MERGED** at `1cf8f27`. Greptile clean at that head, round 3, zero findings. |
 | Spec | `docs/UI-NEXT-INCREMENT.md` §18, recorded BEFORE code |
-| Card | `consumer.ui-setup-screener` — **active** |
+| Card | `consumer.ui-setup-screener` — **verify**; operator moves it to done |
 | plan-warden | ON PLAN WITH CORRECTIONS — five blocking, all applied |
 | Gates | sweep **41/41**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, **all seven parity sheets regenerated** |
 | Greptile | rounds 1–2, **two P1s, both real, both fixed** — see below |

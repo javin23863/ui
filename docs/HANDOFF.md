@@ -51,7 +51,7 @@ npm i && npm run dev      # → http://localhost:5199
 | `consumer.ui-strategy-library` | **verify** — §15 merged (PR #4), operator moves to done |
 | `consumer.ui-screeners` | **verify** — §16 merged (PR #5), operator moves to done |
 | `consumer.ui-indicator-representation` | **ready** — §17, deferred behind §18 on operator direction |
-| `consumer.ui-setup-screener` | **active** — §18 on `feat/setup-screener` |
+| `consumer.ui-setup-screener` | **verify** — §18 merged (PR #6), operator moves to done |
 
 ---
 

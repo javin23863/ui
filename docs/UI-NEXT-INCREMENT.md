@@ -1,7 +1,8 @@
 # TraderCockpit UI — next increment (post-P6)
 
-**Status:** filed 2026-08-05 from operator direction. **§15 and §16 are BUILT and MERGED to `main`**
-(PRs #4 and #5, see `hot.md`); §17 is still plan only.
+**Status:** filed 2026-08-05 from operator direction. **§15, §16 and §18 are BUILT and MERGED to
+`main`** (PRs #4, #5 and #6, see `hot.md`); **§17 is the only unbuilt item**, deferred behind §18 on
+operator direction and recorded on its own card.
 **Why this document exists:** `UI-PARITY-SPEC.md` ends at P6 and defines no P7. plan-warden ruled
 that once P6 is signed off the plan is exhausted and the next increment must come from the operator
 rather than being picked. It now has. This is that increment.
@@ -210,6 +211,8 @@ MetaTrader has an adapter lane outside this repo; the UI question is only that a
 from it is labelled with its engine, so a user can never mistake which engine produced a number.
 
 ## §18. The screening surface is two surfaces
+
+> **BUILT and MERGED 2026-08-05** (PR #6).
 
 **Filed 2026-08-05 from operator intent 5.** §16 answered *"what usually happens after this
 setup?"*. It does not answer *"is that setup happening?"* — so the cockpit holds evidence and no
