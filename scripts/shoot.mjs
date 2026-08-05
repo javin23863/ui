@@ -1,10 +1,14 @@
-// Screenshot the running dev server over CDP at exactly 1920x1080, which is the
-// resolution every reference frame was captured at (§11 parity gate).
+// Screenshot the running dev server over CDP. Defaults to exactly 1920x1080,
+// the resolution every reference frame was captured at (§11 parity gate);
+// override with W/H for the §11 reflow check, which runs at 1440 and 1280.
 // Usage: node scripts/shoot.mjs <out.png> [clickSelector ...]
+//        W=1280 H=800 node scripts/shoot.mjs <out.png>
 import { writeFileSync } from "node:fs";
 
 const [, , out, ...clicks] = process.argv;
 const PORT = 9333;
+const WIDTH = Number(process.env.W) || 1920;
+const HEIGHT = Number(process.env.H) || 1080;
 const URL_ = `http://localhost:5199/${process.env.SEED ? "?seed=1" : ""}`;
 
 const rest = async (p, method = "GET") => {
@@ -53,8 +57,8 @@ await new Promise((r) => sock.on("open", r));
 await send("Page.enable");
 await send("Runtime.enable");
 await send("Emulation.setDeviceMetricsOverride", {
-  width: 1920,
-  height: 1080,
+  width: WIDTH,
+  height: HEIGHT,
   deviceScaleFactor: 1,
   mobile: false,
 });

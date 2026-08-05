@@ -23,6 +23,15 @@ as defects and no one later "corrects" them back toward LuxAlgo.
 | §4a | **Voice input** — mic in the composer, dictation into the box | Reference is type-only. Operator: "he has to type." |
 | §8c | **`Trades Analysis` tab is ours** — sample adequacy, cost sensitivity, IS/OOS split, R-distribution, MAE/MFE, duration/streaks, regime | Never opened in either video. Nothing to copy, so it carries our information instead. |
 | §8d | **`Trades Log` tab is ours** — 17-column auditable ledger, `Gross`/`Costs`/`Net` split out, `IS`/`OOS` per trade, cross-link to chart | Same. |
+| §0e | **Apollo presence orb** — a small draggable sphere, always on screen, pulsing on its state table | Added retrospectively 2026-08-05. It shipped in P4 with **no plan item**: it is not a reference element, and §13 explicitly defers where Apollo's presence lives. Recording it as a divergence rather than deleting it, on the operator's ruling that Apollo is "an ever-presence". |
+
+**§0e is a correction, not a decision made in advance.** The orb was built and merged before anyone
+wrote it down, which is exactly the drift this table exists to prevent — a divergence nobody
+declared is indistinguishable from a parity defect. Its motion constants live in `ApolloOrb.tsx`'s
+`MOTION` table and are ours; no public source documents the reference product's, and that product
+moved voice *out* of a floating orb in Nov 2025. **The orb must not grow further under a P0–P6
+card.** §13's single rule is that these phases must not foreclose Apollo's design, and an
+ever-present orb already leans on it.
 
 The two tabs share one design rule: **every panel must be able to say "no."** The reference's
 backtest surface has no way to express "this result is thin", "costs were never modelled", or
@@ -846,6 +855,12 @@ node scripts/validate_palette.js "<the categorical slots>" --mode dark --surface
 Run it in CI on the token file. A hex that enters `--profit`, `--loss`, `--warning`, `--accent` or
 a series slot without a passing run is a defect regardless of how it looks.
 
+**SHIPPED 2026-08-05 — `.github/workflows/gates.yml`** runs `check:palette`, `tsc -b` and `build`
+on every push to `main` and every PR. **Stated ceiling:** this repo has no branch protection, so a
+red run is *detected and recorded*, not blocking. Read the run before merging; nothing reads it for
+you. The two browser gates stay local — they need a dev server and a CDP Chrome, and a flaky
+required check trains people to ignore checks.
+
 **P1b and P4b are exempt from the parity diff and get a different gate.** There is nothing to diff
 against — they are ours. Their gate is the **empty-state sweep**: for every panel in §8c/§8d and
 every state in §4a, render the fixture that should make it refuse, and confirm it refuses.
@@ -865,11 +880,43 @@ every state in §4a, render the fixture that should make it refuse, and confirm 
 
 A panel that renders a number for every one of these inputs has failed. Passing means it said no.
 
+**RUN 2026-08-05 — `node scripts/sweep.mjs`, 10/10 rows refused**, captures under `docs/sweep/`.
+The seven data rows had only ever been exercised by hand and the three §4a voice rows never at all,
+so this gate was a paragraph rather than a receipt. It asserts rather than photographing: the
+consent row proves `getUserMedia` and `recognition.start` are each called **zero** times before
+consent, which is the third-party-egress guarantee §4a rests on.
+
+*Trap for whoever runs it next:* the voice rows register CDP
+`Page.addScriptToEvaluateOnNewDocument` handlers, which survive navigation and **outlive the
+process if it is interrupted**. A killed run leaves the tab with `SpeechRecognition` deleted and
+`getUserMedia` stubbed, after which every load renders blank **with no exception** — identical to a
+broken dev server, and it cost a long detour. The script now opens its own tab and closes it in
+`finally`; do not "simplify" that back to reusing the shared tab.
+
+**Reflow — `node scripts/reflow.mjs`, PASS at 1440 and 1280**, sheets under `docs/reflow/`.
+Five states per width. It asserts the page never scrolls sideways and that nothing escapes the
+viewport without a horizontally scrollable ancestor. §12 gap 6 makes our breakpoints ours; it
+removes the parity target, not this check.
+
+*Two traps bought building it:* the first version asked whether the overflowing element scrolled
+itself and duly reported the 17-column trades table as broken — it is the **wrapper** that scrolls,
+so the check must walk ancestors. And removing that wrapper's `overflow-x-auto` is **not** a valid
+mutation test: when one axis is non-visible CSS computes the other to `auto`, so the outer
+`overflow-y-auto` container absorbs the scroll and the content stays reachable. A real mutation
+(`min-w-[2200px]` on the shell) makes it fail loudly.
+
 ---
 
-## 12. Known gaps — resolve before P4 ships
+## 12. Known gaps — dispositioned 2026-08-05, not a pending deadline
 
-These are unknowns, not decisions. Nothing below should be invented into the build.
+These began as unknowns, not decisions. Nothing below should be invented into the build.
+
+**P4 shipped with 3–6 still open, and that was correct** — each has a disposition rather than an
+answer, and a disposition does not block a phase. 1–2 are closed as *unrecoverable from the
+source*, which is a stronger statement than "not yet looked for": a second capture pass proved the
+information is not in the footage at any resolution. 3 is accepted inference, 5 is ruled out by
+§2, 6 is our choice. Only 4 is a pure evidence gap, and the deliverable it covers is already
+built. **Do not spend another capture pass on 1–2.**
 
 1. **Metrics table below the fold** (Performance tab) — **CLOSED as unrecoverable, 2026-08-05.**
    A full second capture pass over both videos at native 1080p settles it: the panel appears only
@@ -986,9 +1033,16 @@ a later spec. **This section only forbids foreclosing them.**
 
 ## 14. Process notes
 
-- **Drift gate (CLAUDE.md):** plan-warden not run — its corpus is the esq/futures plan chain and
-  this is a new UI project outside that repo pair. This document *is* the plan artifact the gate
-  exists to protect. State this disposition when the gate is next invoked.
+- **Drift gate (CLAUDE.md):** plan-warden **RUN 2026-08-05** against this repo's own plan chain
+  (this spec, `docs/hot.md`, `docs/parity/README.md`, CLAUDE.md). The earlier disposition here —
+  "not run, its corpus is the esq/futures plan chain" — is spent; the warden reads whatever chain
+  it is pointed at.
+  **Verdict: DRIFTING.** The merged work mapped cleanly to P0–P5, but "continue with the UI" had no
+  plan item behind it, and three P6 gates were declared and never executed: the 1440/1280 reflow
+  check, the empty-state sweep artifacts (including all three §4a voice rows), and the colour gate
+  in CI. It also found `ApolloOrb` shipped with no plan item — now recorded as §0e.
+  Ruled DRIFT and not built: light theme, rail tooltips or labels, responsive work beyond the two
+  declared widths, and anything from §13.
 - **Board card:** CLAUDE.md requires a Manager card before feature code. This spec is planning, not
   feature code. **File the card before P0**, not after.
 - Reference frames are committed under `docs/reference/` so the parity gate stays runnable without

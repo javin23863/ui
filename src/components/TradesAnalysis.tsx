@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CostCurve, DurationHistogram, MaeMfeScatter, RDistribution } from "./charts";
 import { Card, Chip, cx, KpiStrip, Refusal, Signed } from "../ui";
 import { trades } from "../fixtures/market";
@@ -7,7 +7,7 @@ import { trades } from "../fixtures/market";
 // Design rule: every panel must be able to say no. The `profile` switch below
 // exists so that refusal is demonstrable, not just claimed — it is the P6
 // empty-state sweep made interactive.
-type Profile = "full" | "no-costs" | "no-holdout" | "thin" | "no-regimes";
+export type Profile = "full" | "no-costs" | "no-holdout" | "thin" | "no-regimes";
 
 const PROFILES: { id: Profile; label: string }[] = [
   { id: "full", label: "Full run" },
@@ -17,8 +17,20 @@ const PROFILES: { id: Profile; label: string }[] = [
   { id: "no-regimes", label: "Untagged regimes" },
 ];
 
-export default function TradesAnalysis() {
-  const [profile, setProfile] = useState<Profile>("full");
+/**
+ * The run profile describes the RUN, not this tab, so it is owned by the panel
+ * and drives every tab. It used to be local state here, which meant the
+ * Trades Log could never render its own no-costs state — §11 declares a banner
+ * and a `—` column there for the same input that makes this tab refuse, and
+ * that half was unreachable in the app.
+ */
+export default function TradesAnalysis({
+  profile,
+  setProfile,
+}: {
+  profile: Profile;
+  setProfile: (p: Profile) => void;
+}) {
 
   const rows = useMemo(() => (profile === "thin" ? trades.slice(0, 11) : trades), [profile]);
   const costsModelled = profile !== "no-costs";

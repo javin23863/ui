@@ -3,7 +3,7 @@ import { Minimize2, Star } from "lucide-react";
 import { CategoryBars, DailyPnl, EquityCurve } from "./charts";
 import { AssetBadge, Card, cx, KpiStrip, Legend, Signed } from "../ui";
 import { dailyPnl, equity, metricsFor, type SideFilter, summary, weekdayPnlFor } from "../fixtures/market";
-import TradesAnalysis from "./TradesAnalysis";
+import TradesAnalysis, { type Profile } from "./TradesAnalysis";
 import TradesLog from "./TradesLog";
 
 const TABS = ["Performance", "Trades Analysis", "Trades Log"] as const;
@@ -38,6 +38,8 @@ export default function BacktestPanel({
   onShowOnChart?: (t: { n: number; entryTime: number; exitTime: number }) => void;
 }) {
   const [tab, setTab] = useState<Tab>("Performance");
+  // Owned here so every tab sees the same run (§11 empty-state sweep).
+  const [profile, setProfile] = useState<Profile>("full");
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -83,8 +85,10 @@ export default function BacktestPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
         {tab === "Performance" && <Performance />}
-        {tab === "Trades Analysis" && <TradesAnalysis />}
-        {tab === "Trades Log" && <TradesLog onShowOnChart={onShowOnChart} />}
+        {tab === "Trades Analysis" && <TradesAnalysis profile={profile} setProfile={setProfile} />}
+        {tab === "Trades Log" && (
+          <TradesLog costsModelled={profile !== "no-costs"} regimesTagged={profile !== "no-regimes"} onShowOnChart={onShowOnChart} />
+        )}
       </div>
     </div>
   );
