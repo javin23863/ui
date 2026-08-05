@@ -12,11 +12,11 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
-## ▶ §17a/§17b The code pane becomes multi-language — on `feat/code-pane-languages`, BLOCKED at round 4
+## §17a/§17b The code pane becomes multi-language — MERGED TO MAIN 2026-08-05
 
 | | |
 |---|---|
-| PR #7 | `feat/code-pane-languages` — **OPEN, not merged.** CI `gates` SUCCESS at `8b06589`. **Rounds 1–2: three P1s, all real, all fixed. Round 3 (`041d1d3`): 5/5 clean. Round 4 (`8b06589`): 4/5, NEW P1, "not safe to merge" — see below. Awaiting an operator ruling; do not merge.** |
+| PR #7 | `feat/code-pane-languages` → **MERGED**. CI `gates` SUCCESS at the merged head. **Rounds 1–2: three P1s, all real, all fixed. Round 3 (`041d1d3`): 5/5 clean. Round 4 (`8b06589`): 4/5, one P1 — `Previous Candle Direction` is a dead control in all four sources. Merged on an OPERATOR RULING with that finding open, carded as `defect.ui-dead-prevdir-input` at revision 7351.** The defect predates this PR, sits in the canonical fixture rather than in the translations, and its fix is a strategy decision — see below. **This is the one merge in this repo not authorized by a clean pass; it is authorized by the operator, and the distinction is the record.** |
 | Greptile | The `Greptile Review` *check* reads `fail` on a confidence threshold, not a verdict — read the body. Trap #2 in `HANDOFF.md` applies: a clean pass creates no review object and no inline comments, so poll the body's `Reviews (N)` line, never the reviews endpoint. **This repo's regime is that delegation, not the futures adversarial-review rubric — a 5/5 is a pass, not a grade.** A pass authorizes only if its summary describes THIS diff (`feedback_greploop_merge_authorization`: a 5/5 that reviewed another PR is void); round 3's did. |
 | Spec | `docs/UI-NEXT-INCREMENT.md` §17a/§17b, amendments recorded **in a commit of their own, before any code** |
 | Cards | `consumer.ui-indicator-representation` — **verify**, now 17a/17b only; §17c **and §17d's per-run engine field** split out to `consumer.ui-indicator-families` (inbox), where the engine deferral is acceptance row 6 — stated once on the card, with the `notes` field pointing to it rather than restating it. §17d in `UI-NEXT-INCREMENT.md` keeps the plan-side record; that is not duplication and must not be deleted as such. |
@@ -137,7 +137,8 @@ and the rendered buffer all read from it — the same shape as `presentedRowsFor
 > row — the gate's own syntax is not covered by any gate.
 
 > **Round 4 at `8b06589` — `Previous Candle Direction` is a control that does nothing, in ALL FOUR
-> sources. BLOCKS THE MERGE, and the decision is the operator's.** `prevDir` is declared at
+> sources. Open at merge on an operator ruling; carded `defect.ui-dead-prevdir-input`, rev 7351.**
+> `prevDir` is declared at
 > `src/fixtures/market.ts:442` and referenced nowhere in the canonical Pine: `bullSweep` and
 > `bearSweep` never consult it, so `Any` and `Same Direction` produce identical eligibility. Verified
 > by reading the source, not taken from the review. My MQL5 (`InpPrevDir`) and thinkScript
@@ -153,7 +154,9 @@ and the rendered buffer all read from it — the same shape as `presentedRowsFor
 > trades never applied, which is the §17b sin pointed the other way. Which is right turns on a fact
 > only the operator holds: whether the real TradingView strategy implements this filter and our
 > fixture is an incomplete transcription, or whether the input was always vestigial. Asked, not
-> assumed.
+> assumed — and the operator's answer on 2026-08-05 was to merge with it open, so the question is
+> still owed on the card. **Merging did not resolve it; it deferred it with a receipt.** Whoever
+> picks the card up asks that question first, because both fixes are wrong without it.
 >
 > This is the same defect class as the seven the build has already bought — **a label that moves
 > without its data** — in its eighth form: a control that renders, offers two values, and changes
