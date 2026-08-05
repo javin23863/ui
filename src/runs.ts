@@ -1,4 +1,4 @@
-import { summary, pineSource, statsFor, trades } from "./fixtures/market";
+import { asPresented, summary, pineSource, statsFor, trades } from "./fixtures/market";
 
 /**
  * The run model, and the ONE place the adequacy thresholds live.
@@ -166,7 +166,9 @@ const day = (t: number) =>
  */
 export function captureCurrentRun(profile: Profile, parentId: string | null = null): SavedRun {
   const rows = rowsFor(profile);
-  const s = statsFor(rows);
+  // As PRESENTED: a no-costs run reports net equal to gross, so the saved
+  // headline must be the one the panel showed, not the cost-deducted one.
+  const s = statsFor(asPresented(rows, profile !== "no-costs"));
   return {
     id: `run-${Date.now()}`,
     savedAt: Date.now(),

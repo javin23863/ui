@@ -377,6 +377,50 @@ try {
       },
     },
     {
+      // The run profile drove the log and the analysis tab but not Performance,
+      // so under no-costs the log totalled +2,587.70 while the metrics table two
+      // clicks away said +1,999.70 for the same run — a disagreement of exactly
+      // the costs the profile claimed were not modelled. All three surfaces that
+      // state a net for this run must state the same one.
+      row: "no-costs net agrees everywhere",
+      setup: async () => {
+        await load();
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("profile-no-costs");
+      },
+      check: async () => {
+        const money = (s) => (s ? Number(String(s).replace(/[^0-9.-]/g, "")) : NaN);
+        await click("tab-trades-log");
+        const logNet = await evaluate(`(() => {
+          const tf = document.querySelector('[data-apollo-id="trades-log"]')?.querySelector('tfoot');
+          if (!tf) return null;
+          // The totals row leaves trailing columns blank, so take the last cell
+          // that actually carries a number — that is Cum./Net.
+          const cells = [...tf.querySelectorAll('td,th')].map((c) => c.textContent.trim());
+          const numeric = cells.filter((t) => /[0-9]/.test(t));
+          return numeric.length ? numeric[numeric.length - 1] : null;
+        })()`);
+        await click("tab-performance");
+        const panelNet = await evaluate(`(() => {
+          const rows = [...document.querySelectorAll('dl > div')];
+          const r = rows.find((d) => d.querySelector('dt')?.textContent.trim() === 'Net Profit');
+          return r ? r.querySelector('dd').textContent.trim() : null;
+        })()`);
+        await click("favourite-run");
+        await click("rail-history");
+        const cardNet = await evaluate(`(() => {
+          const c = [...document.querySelectorAll('[data-apollo-id^="library-card-"]')].find((x) => /Sweep and Engulf/.test(x.innerText));
+          if (!c) return null;
+          const r = [...c.querySelectorAll('div')].find((d) => d.querySelector('dt')?.textContent.trim() === 'Net');
+          return r ? r.querySelector('dd').textContent.trim() : null;
+        })()`);
+        const [a, b, c] = [money(logNet), money(panelNet), money(cardNet)];
+        const agree = Number.isFinite(a) && Math.abs(a - b) < 0.01 && Math.abs(a - c) < 0.01;
+        return [agree, `log=${logNet} panel=${panelNet} savedCard=${cardNet} agree=${agree}`];
+      },
+    },
+    {
       // The same strategy under a different profile is a different run. Saving
       // one must not make the star claim the other is already kept.
       row: "another profile saves separately",

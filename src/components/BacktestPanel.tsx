@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Minimize2, Star } from "lucide-react";
 import { CategoryBars, DailyPnl, EquityCurve } from "./charts";
 import { AssetBadge, Card, cx, KpiStrip, Legend, Signed } from "../ui";
-import { dailyPnl, equity, metricsFor, type SideFilter, summary, weekdayPnlFor } from "../fixtures/market";
+import { asPresented, dailyPnl, equity, metricsFor, type SideFilter, statsFor, summary, trades, weekdayPnlFor } from "../fixtures/market";
 import type { Profile } from "../runs";
 import TradesAnalysis from "./TradesAnalysis";
 import TradesLog from "./TradesLog";
@@ -10,23 +10,25 @@ import TradesLog from "./TradesLog";
 const TABS = ["Performance", "Trades Analysis", "Trades Log"] as const;
 export type Tab = (typeof TABS)[number];
 
-export function summaryKpis() {
+/** `costsModelled` defaults true: the dock always shows the run as executed. */
+export function summaryKpis(costsModelled = true) {
+  const s = statsFor(asPresented(trades, costsModelled));
   return [
-    { label: "Net Profit", value: <Signed value={summary.netProfit} unit="USD" /> },
-    { label: "Trades", value: <span className="tnum">{summary.trades}</span> },
+    { label: "Net Profit", value: <Signed value={s.netProfit} unit="USD" /> },
+    { label: "Trades", value: <span className="tnum">{s.trades}</span> },
     {
       label: "Win Rate",
-      value: <span className="tnum">{summary.winRate.toFixed(2)}%</span>,
-      sub: `${summary.wins} | ${summary.losses}`,
+      value: <span className="tnum">{s.winRate.toFixed(2)}%</span>,
+      sub: `${s.wins} | ${s.losses}`,
     },
     {
       label: "Max Drawdown",
-      value: <span className="tnum">{summary.maxDrawdown.toLocaleString("en-US", { minimumFractionDigits: 2 })} USD</span>,
-      sub: `${summary.maxDrawdownPct.toFixed(2)}%`,
+      value: <span className="tnum">{s.maxDrawdown.toLocaleString("en-US", { minimumFractionDigits: 2 })} USD</span>,
+      sub: `${s.maxDrawdownPct.toFixed(2)}%`,
     },
     {
       label: "Profit Factor",
-      value: <span className={cx("tnum", summary.profitFactor > 1 ? "text-profit" : "text-loss")}>{summary.profitFactor.toFixed(3)}</span>,
+      value: <span className={cx("tnum", s.profitFactor > 1 ? "text-profit" : "text-loss")}>{s.profitFactor.toFixed(3)}</span>,
     },
   ];
 }
@@ -101,7 +103,7 @@ export default function BacktestPanel({
       <div className="shrink-0 border-b border-border" />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-        {tab === "Performance" && <Performance />}
+        {tab === "Performance" && <Performance costsModelled={profile !== "no-costs"} />}
         {tab === "Trades Analysis" && <TradesAnalysis profile={profile} setProfile={setProfile} />}
         {tab === "Trades Log" && (
           <TradesLog costsModelled={profile !== "no-costs"} regimesTagged={profile !== "no-regimes"} onShowOnChart={onShowOnChart} />
@@ -111,7 +113,7 @@ export default function BacktestPanel({
   );
 }
 
-function Performance() {
+function Performance({ costsModelled }: { costsModelled: boolean }) {
   // Two independent slices — the weekday card and the metrics table each carry
   // their own control in the reference, so neither drives the other.
   const [metricsSide, setMetricsSide] = useState<SideFilter>("All");
@@ -122,7 +124,7 @@ function Performance() {
       <div className="pt-2">
         <EquityCurve data={equity} height={255} apolloId="equity-expanded" />
       </div>
-      <KpiStrip items={summaryKpis()} />
+      <KpiStrip items={summaryKpis(costsModelled)} />
 
       <h2 className="mt-6 mb-3 text-[16px] font-semibold">Performance</h2>
       <div className="grid gap-4" style={{ gridTemplateColumns: "64fr 36fr" }}>
@@ -145,7 +147,7 @@ function Performance() {
           <SideTabs value={metricsSide} onChange={setMetricsSide} idPrefix="metrics-filter" />
         </div>
         <dl>
-          {metricsFor(metricsSide).map((m) => (
+          {metricsFor(metricsSide, costsModelled).map((m) => (
             <div key={m.label} className="flex items-center justify-between border-t border-border py-2">
               <dt className="text-[13px]">{m.label}</dt>
               <dd className={cx("tnum text-[13px]", m.tone === "profit" && "text-profit", m.tone === "loss" && "text-loss")}>{m.value}</dd>

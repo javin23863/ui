@@ -20,8 +20,8 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Spec | `docs/UI-NEXT-INCREMENT.md` §15 |
 | Card | `consumer.ui-strategy-library` — **active** |
 | plan-warden | ON PLAN WITH CORRECTIONS, all four applied (see below) |
-| Gates | sweep **17/17**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
-| Greptile | round 1 found **two P1s, both real, both fixed** — see below |
+| Gates | sweep **18/18**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
+| Greptile | rounds 1–2 found **three P1s, all real, all fixed** — see below |
 
 Reachable from the rail's `History` button. Star in the backtest header saves the run **as shown**,
 so an entry's numbers and its adequacy chips come from the same profile the reader is looking at.
@@ -63,11 +63,35 @@ Two P1s, both real:
    `SavedRun` and of the identity check, and because the profile lives in the backtest panel the
    check is passed down as `isRunSaved(profile)` rather than resolved as a boolean in `App`.
 
-Greptile ran these in a browser and attached the recordings; **our own sweep had 15 green rows and
-caught neither**. Two rows added so they cannot come back — `save keeps its own profile numbers`
-and `another profile saves separately` — and both were mutation-proven by restoring the exact bugs.
-The lesson is narrow and worth keeping: **every row of the sweep asserted a refusal, and neither
-defect was a refusal.** A panel that says no correctly can still put the wrong number on the screen.
+**Round 2 found a third P1, and it was not mine — it was pre-existing on `main`.** Under the
+`no-costs` profile the Trades Log totalled **+2,587.70** ("Costs not modelled — Net equals Gross",
+which is what it says on screen) while the Performance metrics table two clicks away said
+**+1,999.70** for the same run. Both were on screen at once and they disagreed by exactly the costs
+the profile claimed were not modelled. **The run profile drove the Trades Log and Trades Analysis
+but never reached the Performance tab** — the gap PR #3's "make the run profile drive every tab"
+left behind. The saved card had simply inherited the wrong side of a contradiction that was already
+there.
+
+Fixed at the root rather than at the card: `asPresented(rows, costsModelled)` in `market.ts` is now
+the one place that decides what a run reports when it does not model costs, and `metricsFor`,
+`summaryKpis` and `captureCurrentRun` all read it. **Under the `full` profile every number is
+byte-identical, so no parity surface moved** — verified by regenerating all seven sheets. Row
+`no-costs net agrees everywhere` asserts the log total, the metrics table and the saved card state
+the same net; mutating `Performance` back to ignoring the profile reproduces
+`log=+2,587.70 panel=+1999.70` exactly.
+
+> **Do not read "this profile is only a demo switch" as permission to leave it inconsistent.** The
+> profile switch is what makes every refusal in this build demonstrable. A run profile that two
+> panels disagree about is a broken instrument, and it stayed broken because nothing asserted
+> agreement BETWEEN panels — only that each panel said no on its own.
+
+Greptile ran all three in a browser and attached the recordings; **our own sweep had 15 green rows
+and caught none of them**. Three rows added so none can come back — `save keeps its own profile numbers`,
+`another profile saves separately` and `no-costs net agrees everywhere` — each mutation-proven by
+restoring the exact bug it guards.
+The lesson is narrow and worth keeping: **every row of the sweep asserted a refusal, and not one of
+the three defects was a refusal.** A panel that says no correctly can still put the wrong number on
+the screen, and two panels can each be correct on their own while contradicting each other.
 
 **Proven by mutation 2026-08-05**, all five original rows at once: seed unconditionally → `cards=5`;
 flip `fixtureAvailable` → `rendersNumbersAnyway=true`; default sort to `return` → `ordersDiffer=false`;
@@ -112,7 +136,7 @@ npx tsc -b                # clean
 npm run build             # clean
 node scripts/parity.mjs   # regenerates all seven parity sheets
 node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
-node scripts/sweep.mjs    # empty-state sweep, 15 rows, asserts and exits non-zero
+node scripts/sweep.mjs    # empty-state sweep, 18 rows, asserts and exits non-zero
 ```
 
 The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:

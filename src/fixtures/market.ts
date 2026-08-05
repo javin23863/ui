@@ -357,8 +357,22 @@ export type Metric = { label: string; value: string; tone?: "profit" | "loss" };
 const money = (n: number) => `${n >= 0 ? "+" : "−"}${Math.abs(n).toFixed(2)} USD`;
 const tone = (n: number): "profit" | "loss" => (n >= 0 ? "profit" : "loss");
 
-export function metricsFor(side: SideFilter = "All"): Metric[] {
-  const s = statsFor(bySide(side));
+/**
+ * The rows as the run PRESENTS them. A run that does not model costs reports net
+ * equal to gross — the Trades Log says exactly that on screen — so every surface
+ * that reports a number for such a run has to use the same values.
+ *
+ * The run profile drove the Trades Log and Trades Analysis but not the
+ * Performance tab, so under `no-costs` the log totalled +2,587.70 while the
+ * metrics table two clicks away said +1,999.70 for the same run. Both were on
+ * screen, and they disagreed by exactly the costs the profile claimed were not
+ * modelled.
+ */
+export const asPresented = (rows: typeof trades, costsModelled: boolean) =>
+  costsModelled ? rows : rows.map((t) => ({ ...t, costs: 0, net: t.gross }));
+
+export function metricsFor(side: SideFilter = "All", costsModelled = true): Metric[] {
+  const s = statsFor(asPresented(bySide(side), costsModelled));
   return [
     { label: "Net Profit", value: money(s.netProfit), tone: tone(s.netProfit) },
     { label: "Open PnL", value: "0.00 USD" },
