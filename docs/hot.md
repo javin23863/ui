@@ -12,6 +12,171 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
+## ▶ §15 Strategy Library — on `feat/strategy-library`, not yet merged
+
+| | |
+|---|---|
+| Branch | `feat/strategy-library`, worktree `C:\tmp\ui-strategy-library` |
+| Spec | `docs/UI-NEXT-INCREMENT.md` §15 |
+| Card | `consumer.ui-strategy-library` — **active** |
+| plan-warden | ON PLAN WITH CORRECTIONS, all four applied (see below) |
+| Gates | sweep **20/20**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
+| Greptile | rounds 1–7, **eight P1s, all real, all fixed**; one finding re-posted 5× is a FALSE POSITIVE — see below |
+
+Reachable from the rail's `History` button. Star in the backtest header saves the run **as shown**,
+so an entry's numbers and its adequacy chips come from the same profile the reader is looking at.
+
+**The one thing to carry forward:** the five §15b adequacy signals now live in `src/runs.ts` and
+nowhere else. Only two of them were ever chips — `Thin sample` and `Sparse`. Top-3 concentration was
+a coloured KPI column and `Costs not modelled` / `No holdout` were full-card refusal messages, so
+"reuse the chips Trades Analysis already computes" was true of two of five and the other three would
+have been re-derived by hand. `RunFacts` is the input rather than `Profile`, because a live run
+derives its facts from the fixture while a saved run carries the facts it was saved with — same
+thresholds, two fact sources. **`holdout` is three states, not a boolean**: declared-but-empty is a
+different claim from never-declared and the panel already said so in two different sentences.
+
+There is **no "open this run" action**, deliberately. Re-opening a saved run needs a data path this
+build does not have, and a button that quietly returned to the loaded fixture under another run's
+name is the label-without-its-data defect. The saved source is shown instead.
+
+Nothing persists. The panel says so on screen — §15's rule is that a save must not evaporate
+*silently*, not that it must not evaporate.
+
+**The seeded library excludes the currently-loaded run on purpose.** The star is captured by the
+`p5-backtest` parity sheet; seeding the loaded run rendered it already-saved in that frame, which
+would have been a parity divergence introduced by a demo fixture rather than by a decision.
+
+**Greptile round 1 found the defect class again, in the code that was written to prevent it.**
+Two P1s, both real:
+
+1. **`captureCurrentRun` took `facts` from the selected profile but `netProfit`, `winRate`,
+   `profitFactor`, `maxDrawdown` and `rangeLabel` from the full-run `summary`.** Saving under the
+   thin profile produced a card reading *11 trades* beside the whole ledger's +1,999.70 over the
+   whole ledger's date range. **The docstring on that function claimed "numbers come from the same
+   call the panel reads" while the body did the opposite** — the comment asserted the property it
+   was breaking, which is worse than no comment. Fixed by computing every saved metric from
+   `statsFor(rowsFor(profile))`, the same slice `factsForProfile` uses, and deriving the range from
+   the slice's own first entry and last exit. `statsFor` is now exported from `market.ts` rather
+   than reimplemented.
+2. **The saved-run identity omitted the profile**, so after saving `Full run` the star stayed filled
+   under `Costs not modelled` and silently dropped the second save. `profile` is now part of
+   `SavedRun` and of the identity check, and because the profile lives in the backtest panel the
+   check is passed down as `isRunSaved(profile)` rather than resolved as a boolean in `App`.
+
+**Round 2 found a third P1, and it was not mine — it was pre-existing on `main`.** Under the
+`no-costs` profile the Trades Log totalled **+2,587.70** ("Costs not modelled — Net equals Gross",
+which is what it says on screen) while the Performance metrics table two clicks away said
+**+1,999.70** for the same run. Both were on screen at once and they disagreed by exactly the costs
+the profile claimed were not modelled. **The run profile drove the Trades Log and Trades Analysis
+but never reached the Performance tab** — the gap PR #3's "make the run profile drive every tab"
+left behind. The saved card had simply inherited the wrong side of a contradiction that was already
+there.
+
+Fixed at the root rather than at the card: `asPresented(rows, costsModelled)` in `market.ts` is now
+the one place that decides what a run reports when it does not model costs, and `metricsFor`,
+`summaryKpis` and `captureCurrentRun` all read it. **Under the `full` profile every number is
+byte-identical, so no parity surface moved** — verified by regenerating all seven sheets. Row
+`no-costs net agrees everywhere` asserts the log total, the metrics table and the saved card state
+the same net; mutating `Performance` back to ignoring the profile reproduces
+`log=+2,587.70 panel=+1999.70` exactly.
+
+**Round 3 found the same defect one level down, in the round-2 fix.** The saved headline was now
+cost-free (+2,587.70) but `factsForProfile` still derived `top3Share` from the cost-deducted rows,
+so the card paired that headline with `Top-3 carries 249% of net` — a percentage computed against a
+net that was no longer on the card. **A number and the warning that qualifies it have to come from
+the same representation of the run, not merely from the same slice of it.** `presentedRowsFor`
+(slice *and* cost treatment) is now the single call, and `factsForProfile` and `captureCurrentRun`
+both take their rows from it. Correct value is 194%.
+
+> **The first version of that gate could not fail, and the mutation is what proved it.** It compared
+> the panel's Top-3 against the card's Top-3 — but both read the same `factsForProfile`, so pointing
+> that function at the wrong rows moved them together and they agreed on 249% while agreeing with
+> nothing else on screen. The mutation passed, which is the only reason the hole was visible. The
+> row now **recomputes the Top-3 share from the rendered Trades Log** and requires the panel and the
+> card each to match the ledger, not each other: clean reads `ledger=194% panel=194% card=194%`,
+> mutated reads `ledger=194% panel=249% card=249%` and fails. **Two surfaces agreeing is not
+> evidence when one call feeds both.**
+
+**Round 4 found the last one, in the same tab as the round-2 fix.** `TradesAnalysis` still took its
+rows from `rowsFor(profile)`, so under `no-costs` the IS/OOS split summed to **+1,999.70** directly
+below a KPI strip reading **+2,587.70** — cost-free headline over a cost-deducted table, in one
+view. The panel now reads `presentedRowsFor(profile)` like everything else. Row
+`no-costs IS/OOS sums to the run` asserts the two halves reconcile to the run's own net; mutated it
+reads `IS=2555.22 + OOS=-555.52 = 1999.70 vs Net Profit 2587.7 → DISAGREE`.
+
+> **Four of the five findings were the same defect, and each fix revealed the next one.** The
+> profile changed which rows a surface should read, and every surface that had quietly kept its own
+> copy of "the rows" surfaced in turn: the saved card, the Performance tab, the saved facts, the
+> IS/OOS table. `presentedRowsFor(profile)` — slice **and** cost treatment — is now the only
+> answer to "which rows is this run". If a sixth surface ever needs rows, that is the call, and a
+> new `rowsFor`/`trades` reference in a panel should be read as a bug on sight.
+
+**Swept the rest of the class rather than waiting for round 5.** The Performance tab's equity curve,
+Net Daily PNL bars and weekday card all read the module-level full-run consts, so under `no-costs`
+the curve ended at the cost-deducted total directly beneath a cost-free Net Profit. `equityFor`,
+`dailyPnlFor` and `weekdayPnlFor` now take rows, and `summaryKpis` takes rows instead of a boolean,
+so the caller says which run it is describing. `equityFor` **recomputes** cumulative net rather than
+reading the precomputed `t.cum`, which is what a cost-free presentation requires.
+
+**Round 5 closed the class.** It named the gap recorded above rather than accepting it: the `thin`
+profile cut `Trades Analysis` to 11 trades while the Trades Log listed all 47 and Performance
+totalled 47 — one selected run described three ways in three adjacent tabs. `BacktestPanel` now
+computes **one** `runRows = presentedRowsFor(profile)` and hands the same set to Performance, Trades
+Analysis and the Trades Log; `metricsFor`, `summaryKpis`, `equityFor`, `dailyPnlFor` and
+`weekdayPnlFor` all take rows, and `TradesLog` takes a `rows` prop instead of importing the ledger.
+Row `every tab shows the same run` asserts all three report 11 under `thin`; mutated back it reads
+`analysis=11 log=47 performance=47`.
+
+> **The recorded-as-known-gap was the wrong call and the reviewer was right to reject it.** Writing
+> a contradiction down is not the same as not shipping one. It is worth doing only when the fix is
+> genuinely out of reach — this one was a prop.
+
+**Round 6 found a derived field left behind.** `asPresented` replaced each trade's `net` with its
+`gross` but kept the cost-deducted `cum`, so the Trades Log's `Cum. net` column stopped being the
+running sum of the `Net` column beside it and landed short by exactly the modelled costs. It now
+recomputes `cum` too. The `no-costs IS/OOS sums to the run` row also asserts the last `Cum. net`
+equals the run's net; mutated it reads `last Cum. net=1999.7 → DISAGREE` against a net of 2587.7.
+
+**Round 7: the date range was a hand-written constant.** The header rendered
+`summary.rangeLabel` — the literal string `Jun 4, 2023 – Jul 15, 2026` — which matched neither the
+`thin` profile's eleven trades nor, as it turned out, **the full ledger either**, whose trades run
+May 2026 to Aug 2026. `rangeLabelFor(rows)` now derives it, `summary.rangeLabel` is derived from the
+full ledger, and the header reads `rangeLabelFor(runRows)`. **A date range is an aggregate like any
+other, and a hand-typed one contradicts the ledger it claims to summarise** — the same finding the
+fixtures already carried a comment about, in the one aggregate nobody thought of as a number. This
+one *does* move `p5-backtest`, and it moves it TOWARD the reference: ours now reads
+`May 6, 2026 – Aug 7, 2026` against the reference's `May 5 – Jul 14, 2026`.
+
+> **FALSE POSITIVE, re-posted in rounds 3, 4, 5, 6 and 7 — do not "fix" it again.** `runs.ts` *No-costs
+> warning uses deducted returns*, claiming `factsForProfile` derives `top3Share` from cost-deducted
+> `t.net`. It did, and it was fixed at `43c60e2`; `factsForProfile` reads `presentedRowsFor(profile)`
+> and there is no `rowsFor` call left in it. Verified in a browser three times, not by reading the
+> diff: the sweep row recomputes the share from the rendered Trades Log and gets
+> `ledger=194% panel=194% card=194%`. The 249% the finding describes is what that row reports when
+> `factsForProfile` is deliberately mutated back to raw rows — which is the mutation proof, not the
+> live behaviour.
+
+> **Do not read "this profile is only a demo switch" as permission to leave it inconsistent.** The
+> profile switch is what makes every refusal in this build demonstrable. A run profile that two
+> panels disagree about is a broken instrument, and it stayed broken because nothing asserted
+> agreement BETWEEN panels — only that each panel said no on its own.
+
+Greptile ran all five in a browser and attached the recordings; **our own sweep had 15 green rows
+and caught none of them**. Four rows added so none can come back — `save keeps its own profile numbers`,
+`another profile saves separately`, `no-costs figures agree everywhere` and
+`no-costs IS/OOS sums to the run` — each mutation-proven by restoring the exact bug it guards.
+The lesson is narrow and worth keeping: **every row of the sweep asserted a refusal, and not one of
+the five defects was a refusal.** A panel that says no correctly can still put the wrong number on
+the screen, and two panels can each be correct on their own while contradicting each other.
+
+**Proven by mutation 2026-08-05**, all five original rows at once: seed unconditionally → `cards=5`;
+flip `fixtureAvailable` → `rendersNumbersAnyway=true`; default sort to `return` → `ordersDiffer=false`;
+gut the notice → row fails on its text; drop the archived filter → `inActiveView=true`. Exactly the
+five new rows flipped and the ten pre-existing rows stayed green, which is what makes it a valid
+mutation rather than a broken app failing everything.
+
+---
+
 ## UI build — MERGED TO MAIN 2026-08-05
 
 | | |
@@ -47,7 +212,7 @@ npx tsc -b                # clean
 npm run build             # clean
 node scripts/parity.mjs   # regenerates all seven parity sheets
 node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
-node scripts/sweep.mjs    # P6 empty-state sweep, 10 rows, asserts and exits non-zero
+node scripts/sweep.mjs    # empty-state sweep, 20 rows, asserts and exits non-zero
 ```
 
 The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:
@@ -65,6 +230,13 @@ it before merging.
 > outlive the process. A killed run leaves the tab with `SpeechRecognition` deleted and
 > `getUserMedia` stubbed, and every later load renders BLANK with no exception — indistinguishable
 > from a broken dev server.
+>
+> **A run that FAILS a row can poison the next run the same way** (observed 2026-08-05). The
+> `finally` block cannot complete when the process dies on an unsettled top-level await, so the
+> handlers are never removed. The next run then hangs at `await click("mic")` and reports
+> `Detected unsettled top-level await` — which reads exactly like a bug in whatever you just
+> changed, and is not. **Restart Chrome on a fresh `--user-data-dir` after any failed sweep**
+> before believing its next result.
 
 Three fixture invariants also run on every dev boot (`src/fixtures/market.ts`): weekday total equals
 net profit, gross profit minus gross loss equals net profit, wins plus losses equals the trade
@@ -153,5 +325,14 @@ Gaps 3–6 remain genuinely open.
 
 ### Graphs
 
-No code graph for this repo yet. Build one when the branches land on `main`; there is now code
-worth indexing. The ops-vault graph was current as of this wave's `vault_sync`.
+**A code graph exists**: `~/.graphify/ui/graphify-out/graph.json` — 353 nodes / 485 edges / 28
+communities, built 2026-08-05. Query it before grepping:
+
+```
+graphify query "<question>" --graph C:/Users/MSI/.graphify/ui/graphify-out/graph.json
+```
+
+It indexes `src/`, `scripts/` and the spec documents together, so it answers "which panel computes
+this" in one hop. It does **not** index the ops vault — that is a separate graph and returns a
+confident nothing for code questions. This entry previously said no graph existed; it did, and the
+line was already stale when it was read.

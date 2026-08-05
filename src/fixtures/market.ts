@@ -244,9 +244,39 @@ function regimeAt(px: number, slope: number, range: number): string {
   return "Range";
 }
 
-export const equity = trades.map((t) => ({ time: t.entryTime, value: t.cum, n: t.n, side: t.side }));
+/**
+ * The equity path of a given set of rows. Cumulative net is RECOMPUTED rather
+ * than read from `t.cum`, because a run presented without costs accumulates its
+ * gross results — a curve ending at the cost-deducted total underneath a
+ * cost-free Net Profit is the same contradiction in chart form.
+ */
+export const equityFor = (rows: typeof trades) => {
+  let cum = 0;
+  return rows.map((t) => {
+    cum = round2(cum + t.net);
+    return { time: t.entryTime, value: cum, n: t.n, side: t.side };
+  });
+};
 
-export const dailyPnl = trades.map((t) => ({ time: t.entryTime, value: t.net }));
+export const dailyPnlFor = (rows: typeof trades) => rows.map((t) => ({ time: t.entryTime, value: t.net }));
+
+const day = (t: number) =>
+  new Date(t * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/**
+ * The span a set of rows actually covers. This was a hand-written string that
+ * said "Jun 4, 2023 - Jul 15, 2026" while the ledger under it ran from May 2026
+ * to Aug 2026, and it stayed on screen unchanged when a profile cut the run to
+ * eleven trades — a date range is an aggregate like any other, and a hand-typed
+ * one contradicts the ledger it claims to summarise.
+ */
+export const rangeLabelFor = (rows: typeof trades) =>
+  rows.length ? `${day(rows[0].entryTime)} – ${day(rows[rows.length - 1].exitTime)}` : "No trades";
+
+/** The full run as executed — what the dock and the chart pane show. */
+export const equity = equityFor(trades);
+
+export const dailyPnl = dailyPnlFor(trades);
 
 // Derived from the trades, never written by hand. Hand-entered weekday totals
 // summed to 4,270.70 against a net profit of 1,813.27 — an aggregate that
@@ -260,10 +290,11 @@ export const startingCapital = 25000;
 
 export type SideFilter = "All" | "Long" | "Short";
 
-const bySide = (side: SideFilter) => (side === "All" ? trades : trades.filter((t) => t.side === side));
+const bySide = (side: SideFilter, from: typeof trades = trades) =>
+  side === "All" ? from : from.filter((t) => t.side === side);
 
-export function weekdayPnlFor(side: SideFilter = "All") {
-  const rows = bySide(side);
+export function weekdayPnlFor(side: SideFilter = "All", from: typeof trades = trades) {
+  const rows = bySide(side, from);
   return WEEKDAYS.map((label, day) => ({
     label,
     value: round2(
@@ -280,7 +311,7 @@ export const weekdayPnl = weekdayPnlFor();
  * series rather than the whole run's, so filtering to Long does not quietly keep
  * showing the drawdown a short caused.
  */
-function statsFor(rows: typeof trades) {
+export function statsFor(rows: typeof trades) {
   const wins = rows.filter((t) => t.net > 0);
   const losses = rows.filter((t) => t.net <= 0);
   const grossProfit = wins.reduce((s, t) => s + t.net, 0);
@@ -324,7 +355,7 @@ export const summary = {
   symbol: "XAUUSD",
   timeframe: "4h",
   strategy: "Sweep and Engulf Strategy",
-  rangeLabel: "Jun 4, 2023 – Jul 15, 2026",
+  rangeLabel: rangeLabelFor(trades),
   netProfit: all.netProfit,
   trades: all.trades,
   winRate: all.winRate,
@@ -357,8 +388,35 @@ export type Metric = { label: string; value: string; tone?: "profit" | "loss" };
 const money = (n: number) => `${n >= 0 ? "+" : "−"}${Math.abs(n).toFixed(2)} USD`;
 const tone = (n: number): "profit" | "loss" => (n >= 0 ? "profit" : "loss");
 
-export function metricsFor(side: SideFilter = "All"): Metric[] {
-  const s = statsFor(bySide(side));
+/**
+ * The rows as the run PRESENTS them. A run that does not model costs reports net
+ * equal to gross — the Trades Log says exactly that on screen — so every surface
+ * that reports a number for such a run has to use the same values.
+ *
+ * The run profile drove the Trades Log and Trades Analysis but not the
+ * Performance tab, so under `no-costs` the log totalled +2,587.70 while the
+ * metrics table two clicks away said +1,999.70 for the same run. Both were on
+ * screen, and they disagreed by exactly the costs the profile claimed were not
+ * modelled.
+ */
+export const asPresented = (rows: typeof trades, costsModelled: boolean) => {
+  if (costsModelled) return rows;
+  // `cum` is a running sum of `net`, so replacing net without replacing cum
+  // leaves the Trades Log's `Cum. net` column no longer the running total of
+  // the Net column beside it — it lands short by exactly the costs the profile
+  // says were not modelled. A derived field left behind is the same defect as a
+  // label left behind.
+  let cum = 0;
+  return rows.map((t) => {
+    cum = round2(cum + t.gross);
+    return { ...t, costs: 0, net: t.gross, cum };
+  });
+};
+
+/** `from` is the run's rows AS PRESENTED — the caller has already applied the
+ *  profile's slice and cost treatment, so this only picks the side. */
+export function metricsFor(side: SideFilter = "All", from: typeof trades = trades): Metric[] {
+  const s = statsFor(bySide(side, from));
   return [
     { label: "Net Profit", value: money(s.netProfit), tone: tone(s.netProfit) },
     { label: "Open PnL", value: "0.00 USD" },

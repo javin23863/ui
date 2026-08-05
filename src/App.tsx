@@ -2,8 +2,11 @@ import { useState } from "react";
 import { ChevronDown, Clock, Hexagon, PencilLine, Radar, Sparkles, User } from "lucide-react";
 import ChatPane, { type Turn } from "./components/ChatPane";
 import Workspace from "./components/Workspace";
+import StrategyLibrary from "./components/StrategyLibrary";
 import ApolloOrb from "./components/ApolloOrb";
 import { ApolloContext, type ApolloState } from "./components/useApollo";
+import { captureCurrentRun, type Profile, type SavedRun, SEEDED_RUNS } from "./runs";
+import { summary } from "./fixtures/market";
 import { cx } from "./ui";
 
 const RAIL = [
@@ -45,6 +48,30 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [apollo, setApollo] = useState<ApolloState>("idle");
   const [level, setLevel] = useState(0);
+  // §15 — fixture-backed until persistence exists, which is its own card. The
+  // library says on screen that these are lost on reload; a save that
+  // evaporates SILENTLY is the failure, not one that evaporates.
+  const [runs, setRuns] = useState<SavedRun[]>(SEEDED ? SEEDED_RUNS : []);
+  const [library, setLibrary] = useState(false);
+
+  // Identity includes the PROFILE. The same strategy, instrument and timeframe
+  // under a different profile is a different run with different trades and
+  // different numbers, so it must be separately keepable — and the star must
+  // not report it as already saved. The profile lives in the backtest panel, so
+  // the check is passed down rather than resolved here.
+  const isRunSaved = (profile: Profile) =>
+    runs.some(
+      (r) =>
+        r.strategy === summary.strategy &&
+        r.symbol === summary.symbol &&
+        r.timeframe === summary.timeframe &&
+        r.profile === profile,
+    );
+
+  const saveRun = (profile: Profile) => {
+    if (isRunSaved(profile)) return;
+    setRuns((rs) => [captureCurrentRun(profile), ...rs]);
+  };
 
   const send = (text: string) => {
     setTurns((t) => [...t, { id: `u${t.length}`, source: "user", text }, ...(t.length === 0 ? SCRIPT : [])]);
@@ -69,7 +96,12 @@ export default function App() {
             data-apollo-id={`rail-${r.label.toLowerCase().replace(/\s+/g, "-")}`}
             aria-label={r.label}
             title={r.label}
-            className="grid h-11 w-full place-items-center text-icon-idle transition-colors hover:text-text-primary"
+            aria-pressed={r.label === "History" ? library : undefined}
+            onClick={r.label === "History" ? () => setLibrary((l) => !l) : undefined}
+            className={cx(
+              "grid h-11 w-full place-items-center transition-colors hover:text-text-primary",
+              r.label === "History" && library ? "text-accent" : "text-icon-idle",
+            )}
           >
             <r.icon size={17} />
           </button>
@@ -105,12 +137,25 @@ export default function App() {
           </div>
           <div className={cx("w-px shrink-0 bg-border", collapsed && "hidden")} />
           <div className="min-h-0 min-w-0 flex-1 pl-4">
-            <Workspace
-              title={hasStrategy ? "Sweep and Engulf Strategy" : "My script"}
-              hasStrategy={hasStrategy}
-              chatCollapsed={collapsed}
-              onCollapseChat={() => setCollapsed((c) => !c)}
-            />
+            {library ? (
+              <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">
+                <StrategyLibrary
+                  runs={runs}
+                  onArchive={(id, archived) =>
+                    setRuns((rs) => rs.map((r) => (r.id === id ? { ...r, archived } : r)))
+                  }
+                />
+              </section>
+            ) : (
+              <Workspace
+                title={hasStrategy ? "Sweep and Engulf Strategy" : "My script"}
+                hasStrategy={hasStrategy}
+                chatCollapsed={collapsed}
+                onCollapseChat={() => setCollapsed((c) => !c)}
+                onSaveRun={saveRun}
+                isRunSaved={isRunSaved}
+              />
+            )}
           </div>
         </div>
       </div>

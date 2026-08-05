@@ -126,6 +126,18 @@ try {
 
   const bodyText = () => evaluate("document.body.innerText");
 
+  /** Open the §15 library. `seeded` false gives a genuinely empty one. */
+  const library = async (seeded = true) => {
+    await load(seeded ? "?seed=1" : "");
+    await click("rail-history");
+  };
+
+  /** data-apollo-id of the first card in the list, in whatever order is active. */
+  const firstCard = () =>
+    evaluate(
+      `(() => { const el = document.querySelector('[data-apollo-id^="library-card-"]'); return el ? el.getAttribute('data-apollo-id') : null; })()`,
+    );
+
   const DATA_ROWS = [
     {
       // §11 declares TWO behaviours for this one input: the cost-sensitivity
@@ -243,6 +255,351 @@ try {
           bad.length === 0
             ? `${thinRows.length} thin row(s), each muted AND carrying a row-local Thin marker`
             : `${bad.length} thin row(s) missing muted styling or the row-local marker`,
+        ];
+      },
+    },
+    // ------------------------------------------------------------- §15 library
+
+    {
+      // The default state. Nothing is saved, so the panel must explain what a
+      // save keeps rather than showing an example run that was never run.
+      row: "empty library explains a save",
+      setup: () => library(false),
+      check: async () => {
+        const r = await evaluate(`(() => ({
+          cards: document.querySelectorAll('[data-apollo-id^="library-card-"]').length,
+          text: document.querySelector('[data-apollo-id="strategy-library"]')?.innerText ?? '',
+        }))()`);
+        const explains = /No saved runs yet/i.test(r.text) && /instrument, timeframe, date range/i.test(r.text);
+        return [
+          r.cards === 0 && explains,
+          `cards=${r.cards} explainsWhatASaveKeeps=${explains}`,
+        ];
+      },
+    },
+    {
+      // The harder refusal §15 names: a saved run whose data is gone must say so
+      // and must NOT re-render its headline against whatever is loaded now.
+      row: "saved run without its data",
+      setup: () => library(),
+      check: async () => {
+        const r = await evaluate(`(() => {
+          const el = document.querySelector('[data-apollo-id="library-card-run-vwap-fade"]');
+          if (!el) return { card: false };
+          const t = el.innerText;
+          return {
+            card: true,
+            refuses: /no longer loaded/i.test(t),
+            numbers: /Win rate|Profit factor/i.test(t),
+            chips: !!el.querySelector('[data-apollo-id="library-chips-run-vwap-fade"]'),
+          };
+        })()`);
+        if (!r.card) return [false, "the unavailable-data run is not in the library"];
+        return [
+          r.refuses && !r.numbers && !r.chips,
+          `saysUnavailable=${r.refuses} rendersNumbersAnyway=${r.numbers} rendersChips=${r.chips}`,
+        ];
+      },
+    },
+    {
+      // §15b's whole argument. Asserted relatively so it can actually fail: the
+      // default order must NOT lead with the biggest number, and selecting
+      // "Highest return" must show that it would have.
+      row: "default sort is not by return",
+      setup: () => library(),
+      check: async () => {
+        const first = await firstCard();
+        const control = await evaluate(
+          `document.querySelector('[data-apollo-id="library-sort-trust"]')?.getAttribute('aria-pressed')`,
+        );
+        const named = await evaluate(
+          `document.querySelector('[data-apollo-id="library-sort-trust"]')?.textContent?.trim()`,
+        );
+        await click("library-sort-return");
+        const byReturn = await firstCard();
+        const differs = first !== byReturn;
+        return [
+          control === "true" && named === "Most trustworthy" && differs,
+          `default=${control} label="${named}" trustFirst=${first} returnFirst=${byReturn} ordersDiffer=${differs}`,
+        ];
+      },
+    },
+    {
+      // A save that evaporates on reload is only acceptable while it says so.
+      row: "library states saves are not kept",
+      setup: () => library(),
+      check: async () => {
+        const t = await evaluate(
+          `document.querySelector('[data-apollo-id="library-storage-notice"]')?.innerText ?? ''`,
+        );
+        // Both clauses, so dropping either one fails: that saves are lost, and
+        // that nothing is kept beyond the tab.
+        const ok = /lost on reload/i.test(t) && /nothing is stored/i.test(t);
+        return [ok, ok ? "storage limit stated on screen" : `notice missing or silent: "${t}"`];
+      },
+    },
+    {
+      // A save must carry the numbers of the run it was taken from. An earlier
+      // build stored the selected profile's trade COUNT beside the full
+      // ledger's net, win rate and date range — "11 trades" over a 37-month
+      // span earning the whole run's money.
+      row: "save keeps its own profile numbers",
+      setup: async () => {
+        await load();
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("profile-thin");
+        await click("favourite-run");
+        await click("rail-history");
+      },
+      check: async () => {
+        const r = await evaluate(`(() => {
+          const cards = [...document.querySelectorAll('[data-apollo-id^="library-card-"]')];
+          const el = cards.find((c) => /Sweep and Engulf Strategy/.test(c.innerText));
+          if (!el) return { card: false };
+          const read = (label) => {
+            const row = [...el.querySelectorAll('div')].find(
+              (d) => d.querySelector('dt') && d.querySelector('dt').textContent.trim() === label,
+            );
+            return row ? row.querySelector('dd').textContent.trim() : null;
+          };
+          return { card: true, trades: read('Trades'), net: read('Net'), text: el.innerText };
+        })()`);
+        if (!r.card) return [false, "the starred run is not in the library"];
+        const trades = Number(r.trades);
+        // The full ledger is 47 trades netting 1,999.70 over Jun 2023 - Jul 2026.
+        const fullNet = /1,?999\.70/.test(r.net ?? "");
+        const fullRange = /Jun 4, 2023/.test(r.text ?? "");
+        return [
+          trades === 11 && !fullNet && !fullRange,
+          `trades=${trades} net=${r.net} showsFullRunNet=${fullNet} showsFullRunRange=${fullRange}`,
+        ];
+      },
+    },
+    {
+      // The run profile drove the log and the analysis tab but not Performance,
+      // so under no-costs the log totalled +2,587.70 while the metrics table two
+      // clicks away said +1,999.70 for the same run — a disagreement of exactly
+      // the costs the profile claimed were not modelled. All three surfaces that
+      // state a net for this run must state the same one.
+      row: "no-costs figures agree everywhere",
+      setup: async () => {
+        await load();
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("profile-no-costs");
+      },
+      check: async () => {
+        const money = (s) => (s ? Number(String(s).replace(/[^0-9.-]/g, "")) : NaN);
+        // The qualifier has to describe the SAME representation as the headline.
+        // A cost-free net beside a Top-3 percentage computed against the
+        // cost-deducted net is two different runs on one card.
+        const panelTop3 = await evaluate(`(() => {
+          const el = [...document.querySelectorAll('div')].find(
+            (d) => d.children.length === 2 && /^TOP-3 TRADE SHARE$/i.test(d.children[0]?.textContent?.trim() ?? ''),
+          );
+          return el ? el.children[1].textContent.trim() : null;
+        })()`);
+        await click("tab-trades-log");
+        const logNet = await evaluate(`(() => {
+          const tf = document.querySelector('[data-apollo-id="trades-log"]')?.querySelector('tfoot');
+          if (!tf) return null;
+          // The totals row leaves trailing columns blank, so take the last cell
+          // that actually carries a number — that is Cum./Net.
+          const cells = [...tf.querySelectorAll('td,th')].map((c) => c.textContent.trim());
+          const numeric = cells.filter((t) => /[0-9]/.test(t));
+          return numeric.length ? numeric[numeric.length - 1] : null;
+        })()`);
+        // Recompute the Top-3 share from the LEDGER ON SCREEN rather than
+        // comparing two surfaces that both read the same function. Checking only
+        // panel-against-card cannot fail: pointing both at the wrong rows moves
+        // them together, and they agree on a figure that describes neither the
+        // net beside it nor the trades below it.
+        const expectedTop3 = await evaluate(`(() => {
+          const t = document.querySelector('[data-apollo-id="trades-log"]');
+          if (!t) return null;
+          const head = [...t.querySelectorAll('thead th')].map((h) => h.textContent.trim());
+          const col = head.findIndex((h) => /^net$/i.test(h));
+          if (col < 0) return null;
+          const nets = [...t.querySelectorAll('tbody tr')]
+            .map((tr) => tr.querySelectorAll('td')[col]?.textContent ?? '')
+            .map((s) => Number(s.replace(/\\u2212/g, '-').replace(/[^0-9.-]/g, '')))
+            .filter((n) => Number.isFinite(n));
+          if (!nets.length) return null;
+          const sum = nets.reduce((a, b) => a + b, 0);
+          const top3 = [...nets].sort((a, b) => b - a).slice(0, 3).reduce((a, b) => a + b, 0);
+          return sum > 0 ? (top3 / sum) * 100 : null;
+        })()`);
+        await click("tab-performance");
+        const panelNet = await evaluate(`(() => {
+          const rows = [...document.querySelectorAll('dl > div')];
+          const r = rows.find((d) => d.querySelector('dt')?.textContent.trim() === 'Net Profit');
+          return r ? r.querySelector('dd').textContent.trim() : null;
+        })()`);
+        await click("favourite-run");
+        await click("rail-history");
+        const cardNet = await evaluate(`(() => {
+          const c = [...document.querySelectorAll('[data-apollo-id^="library-card-"]')].find((x) => /Sweep and Engulf/.test(x.innerText));
+          if (!c) return null;
+          const r = [...c.querySelectorAll('div')].find((d) => d.querySelector('dt')?.textContent.trim() === 'Net');
+          return r ? r.querySelector('dd').textContent.trim() : null;
+        })()`);
+        const cardTop3 = await evaluate(`(() => {
+          const c = [...document.querySelectorAll('[data-apollo-id^="library-card-"]')].find((x) => /Sweep and Engulf/.test(x.innerText));
+          const m = c && c.innerText.match(/Top-3 carries (\\d+)% of net/);
+          return m ? m[1] : null;
+        })()`);
+        const [a, b, c] = [money(logNet), money(panelNet), money(cardNet)];
+        const netAgree = Number.isFinite(a) && Math.abs(a - b) < 0.01 && Math.abs(a - c) < 0.01;
+        const p3 = money(panelTop3);
+        const c3 = money(cardTop3);
+        // Each must match the ledger on screen, not merely each other.
+        const exp = Number.isFinite(expectedTop3) ? expectedTop3 : NaN;
+        const top3Agree =
+          Number.isFinite(exp) && Number.isFinite(p3) && Number.isFinite(c3) &&
+          Math.abs(p3 - exp) < 1.5 && Math.abs(c3 - exp) < 1.5;
+        return [
+          netAgree && top3Agree,
+          `net: log=${logNet} panel=${panelNet} card=${cardNet} agree=${netAgree}` +
+            ` | top3: ledger=${Number.isFinite(exp) ? exp.toFixed(0) : "?"}% panel=${panelTop3} card=${cardTop3}% agree=${top3Agree}`,
+        ];
+      },
+    },
+    {
+      // The IS/OOS split is the same run cut in two, so its halves must add up
+      // to the run's own net. Under no-costs the split still totalled +1,999.70
+      // beside a Net Profit of +2,587.70 — the panel had cost-free KPIs above a
+      // cost-deducted table, in the same tab.
+      row: "no-costs IS/OOS sums to the run",
+      setup: async () => {
+        await load();
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("profile-no-costs");
+      },
+      check: async () => {
+        const r = await evaluate(`(() => {
+          const num = (s) => Number(String(s).replace(/\\u2212/g, '-').replace(/[^0-9.-]/g, ''));
+          const cells = [...document.querySelectorAll('div')];
+          const netLabel = cells.find((d) => d.textContent.trim() === 'Net' && d.className.includes('border-t'));
+          if (!netLabel) return null;
+          const sibs = [...netLabel.parentElement.children];
+          const i = sibs.indexOf(netLabel);
+          const is = num(sibs[i + 1]?.textContent), oos = num(sibs[i + 2]?.textContent);
+          const kpi = cells.find((d) => d.children.length === 2 && /^TRADES$/i.test(d.children[0]?.textContent?.trim() ?? ''));
+          return { is, oos, kpiPresent: !!kpi };
+        })()`);
+        if (!r) return [false, "IS/OOS Net row not found"];
+        // The Cum. net column is a running sum of the Net column beside it, so
+        // the last row must equal the run's net. Swapping net for gross without
+        // recomputing cum left it short by exactly the modelled costs.
+        await click("tab-trades-log");
+        const lastCum = await evaluate(`(() => {
+          const t = document.querySelector('[data-apollo-id="trades-log"]');
+          if (!t) return null;
+          const head = [...t.querySelectorAll('thead th')].map((h) => h.textContent.trim());
+          const col = head.findIndex((h) => /^cum\\. net$/i.test(h));
+          if (col < 0) return null;
+          const rows = [...t.querySelectorAll('tbody tr')];
+          const cell = rows[rows.length - 1]?.querySelectorAll('td')[col]?.textContent ?? '';
+          return Number(cell.replace(/\\u2212/g, '-').replace(/[^0-9.-]/g, ''));
+        })()`);
+        await click("tab-performance");
+        const panelNet = await evaluate(`(() => {
+          const rows = [...document.querySelectorAll('dl > div')];
+          const d = rows.find((x) => x.querySelector('dt')?.textContent.trim() === 'Net Profit');
+          return d ? Number(d.querySelector('dd').textContent.replace(/\\u2212/g, '-').replace(/[^0-9.-]/g, '')) : NaN;
+        })()`);
+        const sum = r.is + r.oos;
+        const splitOk = Number.isFinite(panelNet) && Math.abs(sum - panelNet) < 0.05;
+        const cumOk = Number.isFinite(lastCum) && Math.abs(lastCum - panelNet) < 0.05;
+        return [
+          splitOk && cumOk,
+          `IS=${r.is} + OOS=${r.oos} = ${sum.toFixed(2)} vs Net Profit ${panelNet} → ${splitOk ? "reconciles" : "DISAGREE"}` +
+            ` | last Cum. net=${lastCum} → ${cumOk ? "matches" : "DISAGREE"}`,
+        ];
+      },
+    },
+    {
+      // One selected run, one trade count, whichever tab is open. The thin
+      // profile cut Trades Analysis to 11 while the Trades Log still listed all
+      // 47 and Performance still totalled 47 — the same run described three
+      // ways in three adjacent tabs.
+      row: "every tab shows the same run",
+      setup: async () => {
+        await load();
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("profile-thin");
+      },
+      check: async () => {
+        const analysis = await evaluate(`(() => {
+          const d = [...document.querySelectorAll('div')].find(
+            (x) => x.children.length === 2 && /^TRADES$/i.test(x.children[0]?.textContent?.trim() ?? ''),
+          );
+          return d ? Number(d.children[1].textContent.replace(/[^0-9]/g, '')) : NaN;
+        })()`);
+        await click("tab-trades-log");
+        const log = await evaluate(
+          `document.querySelector('[data-apollo-id="trades-log"]')?.querySelectorAll('tbody tr').length ?? -1`,
+        );
+        await click("tab-performance");
+        const perf = await evaluate(`(() => {
+          const d = [...document.querySelectorAll('div')].find(
+            (x) => x.children.length === 2 && /^TRADES$/i.test(x.children[0]?.textContent?.trim() ?? ''),
+          );
+          return d ? Number(d.children[1].textContent.replace(/[^0-9]/g, '')) : NaN;
+        })()`);
+        // The header's date range is an aggregate of the same rows, so it must
+        // move with them. It was a hand-written constant that stayed put.
+        const header = await evaluate(`(() => {
+          const h = [...document.querySelectorAll('h2')].find((x) => /Backtest Results/.test(x.textContent));
+          return h?.nextElementSibling?.textContent?.trim() ?? null;
+        })()`);
+        const counts = analysis === 11 && log === 11 && perf === 11;
+        // 11 trades cannot span the full ledger's three years.
+        const headerMoved = !!header && !/2023/.test(header);
+        return [
+          counts && headerMoved,
+          `analysis=${analysis} log=${log} performance=${perf} (thin is 11) | header range="${header}" followsRun=${headerMoved}`,
+        ];
+      },
+    },
+    {
+      // The same strategy under a different profile is a different run. Saving
+      // one must not make the star claim the other is already kept.
+      row: "another profile saves separately",
+      setup: async () => {
+        await load();
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("favourite-run"); // full run
+        await click("profile-thin");
+        await click("favourite-run"); // thin run — a different run
+        await click("rail-history");
+      },
+      check: async () => {
+        const n = await evaluate(
+          `[...document.querySelectorAll('[data-apollo-id^="library-card-"]')].filter((c) => /Sweep and Engulf Strategy/.test(c.innerText)).length`,
+        );
+        return [n === 2, `saved snapshots of the same strategy = ${n} (expected 2: full and thin)`];
+      },
+    },
+    {
+      // §15c — abandoned runs leave the default view but are never destroyed.
+      row: "archived run is kept, not deleted",
+      setup: () => library(),
+      check: async () => {
+        const active = await evaluate(
+          `!!document.querySelector('[data-apollo-id="library-card-run-orb-eurusd"]')`,
+        );
+        await click("library-filter-archived");
+        const archived = await evaluate(
+          `!!document.querySelector('[data-apollo-id="library-card-run-orb-eurusd"]')`,
+        );
+        return [
+          !active && archived,
+          `inActiveView=${active} inArchivedView=${archived}`,
         ];
       },
     },
