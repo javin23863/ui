@@ -16,11 +16,12 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 | | |
 |---|---|
+| PR | **[#7](https://github.com/javin23863/ui/pull/7)** — OPEN. CI `gates` SUCCESS. **Greptile round 1 (at `69094f1`): 4/5, TWO P1s, both real, both fixed — re-review owed at the new head.** Trap #2 in `HANDOFF.md` applies — a clean pass creates no review object and no comments, so poll the PR **body** for its `Reviews (N)` line, not the reviews endpoint. |
 | Branch | `feat/code-pane-languages`, worktree `C:\tmp\ui-code-pane-languages` |
 | Spec | `docs/UI-NEXT-INCREMENT.md` §17a/§17b, amendments recorded **in a commit of their own, before any code** |
-| Cards | `consumer.ui-indicator-representation` — **active**, now 17a/17b only; §17c split out to `consumer.ui-indicator-families` (inbox) |
+| Cards | `consumer.ui-indicator-representation` — **active**, now 17a/17b only; §17c **and §17d's per-run engine field** split out to `consumer.ui-indicator-families` (inbox), where the engine deferral is acceptance row 6 — stated once on the card, with the `notes` field pointing to it rather than restating it. §17d in `UI-NEXT-INCREMENT.md` keeps the plan-side record; that is not duplication and must not be deleted as such. |
 | plan-warden | ON PLAN WITH CORRECTIONS — six blocking, all applied |
-| Gates | sweep **47/47**, reflow PASS at 1440 + 1280, palette 20/20, `tsc -b` clean, `build` clean, seven parity sheets regenerated |
+| Gates | sweep **49/49**, reflow PASS at 1440 + 1280, palette 20/20, `tsc -b` clean, `build` clean, seven parity sheets regenerated |
 
 The pane rendered Pine and only Pine, so a strategy in this cockpit was unusable to every trader
 not on TradingView. It now carries **`Pine v6` · `MQL5` · `thinkScript`**, each a real hand-written
@@ -68,6 +69,59 @@ and the rendered buffer all read from it — the same shape as `presentedRowsFor
 > read the *first* card in the library, which is a SEEDED card. It passed with the save deliberately
 > broken. Scoped to the card for the run just saved, it fails on exactly the defect it names. **The
 > rule that keeps earning its keep: a row that has not been watched to fail is not a gate.**
+
+### What Greptile caught — round 1 at `69094f1`, 4/5, two P1s, both real
+
+- **P1-A — the thinkScript translation was a different strategy.** Pine holds `stopPrice` and
+  `targetPrice` in `var` floats set once at entry; mine recomputed them from each bar's close and
+  ATR, so the stop and target walked along with price and the position **could never be stopped out
+  on a trend against it**. Latched with `rec` at the signal bar. This is precisely what §17b exists
+  to prevent, and I shipped one — a translation that reads right and trades differently.
+- **P1-B — the language listbox could not be dismissed, and it was a CLASS.** Greptile named the new
+  control. But `TickerPicker` held the only correct copy of that logic and the **timeframe dropdown
+  in the same header had the identical defect**. Patching the reported instance would have left the
+  older sibling broken. Extracted `useDismiss` in `src/ui.tsx`; all three use it, and both header
+  menus close on view change. **plan-warden pass 3 caught the claim outrunning its proof:** the row
+  exercised the language selector on Escape *and* outside-click, the timeframe on Escape only, and
+  `TickerPicker` — the third consumer — not at all. A shared hook with one of three consumers checked
+  is how the next regression gets through, and `TickerPicker` was *already correct* before the dedup,
+  so it is exactly the control a silent un-fix would hit. All three legs now assert, plus the
+  view-change close.
+- **§17a says `Run` is "disabled **and states why**" — two clauses, one asserted.** The row read
+  `.disabled` and nothing else, so deleting the reason sentence left the sweep green. Also caught by
+  pass 3, and the same failure mode pass 2 caught: a clause that reads as covered because a sibling
+  clause is.
+
+> **The harness lied about its own result.** `sweep.mjs` printed
+> `empty-state sweep: PASS — every row said no` **unconditionally**, outside the `if (failed.length)`
+> branch. A mutated run emitted the `FAILED` block and then closed with `PASS` as its last line — so
+> anything reading tail-1 or stdout-only took a green from a red run. The exit code was always
+> honest; the sentence never could be. Now a ternary on the same `failed.length` that sets the exit
+> code. **A verdict that cannot say otherwise is not a verdict** — the same test the rows are held to,
+> finally applied to the thing that reports them.
+
+> **And the row's scope was decorative.** `no run numbers beside derived` queried
+> `[data-apollo-id="workspace"]`, an id that **has never existed in this codebase**, and fell through
+> to `document.body`. It read as pane-scoped and was not. Now an explicit document-wide scan, which
+> is the right scope anyway: §17b's prohibition is that no run figure shares the *screen* with a
+> derived language, so narrowing to the pane would let a KPI strip render just outside it and pass.
+
+> **A syntax error and a proven mutation are the same exit code.** The comment written to explain
+> that scope fix went *inside* a backtick template literal and itself contained backticks, which
+> closed the literal: `SyntaxError: missing ) after argument list`. The script still **exited 1**. A
+> mutation proof that checked only `$?` would have recorded the fix as proven while **zero rows
+> executed**. The durable rule, now in `HANDOFF.md` trap #5: read the `N/N` line and the final stdout
+> line, never the exit code alone. `node --check scripts/sweep.mjs` before and after any edit to a
+> row — the gate's own syntax is not covered by any gate.
+
+> **Known-flaky row, not fixed here — `11 trades → Thin sample chip`.** It failed once on the first
+> sweep after a source edit forced a vite re-transform, then passed on immediate re-run. Two causes at
+> `scripts/sweep.mjs:98`: `click()` waits a fixed 850 ms rather than for an expected state, so it
+> loses under load; and it returns `'MISSING'` when the element is absent, which `analysisUnder`
+> discards — a missed `profile-thin` click is silent and the row then reads the *previous* profile's
+> text. That second one is the serious half: it is a row that can pass on stale state. Left alone
+> deliberately — it is outside §17a/§17b and wants its own card, not a drive-by fix inside a feature
+> PR.
 
 ---
 

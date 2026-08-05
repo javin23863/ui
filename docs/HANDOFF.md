@@ -52,7 +52,7 @@ npm i && npm run dev      # → http://localhost:5199
 | `consumer.ui-strategy-library` | **verify** — §15 merged (PR #4), operator moves to done |
 | `consumer.ui-screeners` | **verify** — §16 merged (PR #5), operator moves to done |
 | `consumer.ui-indicator-representation` | **active** — §17a/§17b, on `feat/code-pane-languages` |
-| `consumer.ui-indicator-families` | **inbox** — §17c, split out 2026-08-05 so the card above is not partially satisfied |
+| `consumer.ui-indicator-families` | **inbox** — §17c indicator families, **and §17d's deferred per-run `engine` field**; split out 2026-08-05 so the card above is not partially satisfied |
 | `consumer.ui-setup-screener` | **verify** — §18 merged (PR #6), operator moves to done |
 
 ---
@@ -73,7 +73,7 @@ The two browser gates need `npm run dev` on 5199 **and** a Chrome on CDP 9333:
 ```bash
 chrome --remote-debugging-port=9333 --user-data-dir=<scratch> --window-size=1920,1080
 node scripts/reflow.mjs   # 1440 + 1280, asserts, exits non-zero
-node scripts/sweep.mjs    # 47-row empty-state sweep, asserts, exits non-zero
+node scripts/sweep.mjs    # 49-row empty-state sweep, asserts, exits non-zero
 node scripts/parity.mjs   # regenerates the seven side-by-side sheets
 ```
 
@@ -103,6 +103,20 @@ node scripts/parity.mjs   # regenerates the seven side-by-side sheets
    green *correctly* — CSS computes the other axis to `auto` and an outer container absorbs the
    scroll. Recording "gate proven" on that would have been a false receipt. Mutate something that
    genuinely breaks.
+   **Trust the exit code, never the last line.** Until 2026-08-05 `sweep.mjs` printed
+   `empty-state sweep: PASS — every row said no` unconditionally, *after* the `FAILED` block, so a
+   red run ended on a green sentence. Fixed — but the habit is the durable part: `echo $?`, and read
+   the `N/N` count. A verdict that cannot say otherwise carries no information, and that test applies
+   to the harness exactly as it applies to the rows.
+   **A scoped selector proves nothing until you confirm the element exists.** That same row scanned
+   `[data-apollo-id="workspace"]`, an id never present in this codebase, and silently fell through to
+   `document.body` — reading as pane-scoped while being global.
+   **A syntax error in the harness exits 1, exactly like a proven mutation.** A comment added inside
+   one of the `evaluate(\`…\`)` template literals contained backticks, closed the literal, and broke
+   the script — which still exited 1 with **zero rows run**. Run `node --check scripts/sweep.mjs`
+   before and after touching a row (nothing gates the gate's own syntax), and judge a run by its
+   `N/N rows refused as specified` line and its final stdout line. `$?` alone cannot tell you the
+   difference between *caught the defect* and *never started*.
 
 ---
 

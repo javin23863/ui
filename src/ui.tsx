@@ -1,6 +1,31 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode, type RefObject } from "react";
 
 export const cx = (...c: (string | false | undefined | null)[]) => c.filter(Boolean).join(" ");
+
+/**
+ * Close a popover on Escape or a pointer outside it.
+ *
+ * Extracted from `TickerPicker`, where this was the only correct copy. The
+ * timeframe dropdown in `Workspace` never had it and neither did the §17a
+ * language selector when it was written — so a review finding against the new
+ * control was a finding against a CLASS, and fixing only the new one would
+ * have left the older sibling broken in the same header. An overlay that
+ * cannot be dismissed is a trap on a trading surface, where the thing it
+ * covers is the chart.
+ */
+export function useDismiss(box: RefObject<HTMLElement | null>, open: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => !box.current?.contains(e.target as Node) && onClose();
+    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("mousedown", h);
+    window.addEventListener("keydown", k);
+    return () => {
+      document.removeEventListener("mousedown", h);
+      window.removeEventListener("keydown", k);
+    };
+  }, [box, open, onClose]);
+}
 
 /**
  * Asset badge. Derived from the symbol, never hardcoded — a gold badge beside a

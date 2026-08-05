@@ -1118,14 +1118,28 @@ try {
       setup: () => codePane(),
       check: async () => {
         const enabled = () => evaluate(`!document.querySelector('[data-apollo-id="run-code"]')?.disabled`);
+        // §17a is "disabled AND STATES WHY" — two clauses. Only the first was
+        // asserted, so deleting the reason sentence left the sweep green. A
+        // control that greys out with no reason is a dead button, not a
+        // refusal. Two-sided for the same purpose as the enabled check: the
+        // canonical must NOT carry a reason, so a sentence hardcoded to render
+        // always fails here too.
+        const saysWhy = async () => /unavailable here/i.test((await provenanceText()) ?? "");
         const onPine = await enabled();
+        const pineWhy = await saysWhy();
         await click("code-language");
         await click("code-language-mql5");
         const onMql5 = await enabled();
+        const mql5Why = await saysWhy();
         await click("code-language");
         await click("code-language-thinkscript");
         const onThink = await enabled();
-        return [onPine && !onMql5 && !onThink, `pineEnabled=${onPine} mql5Enabled=${onMql5} thinkScriptEnabled=${onThink}`];
+        const thinkWhy = await saysWhy();
+        const ok = onPine && !pineWhy && !onMql5 && mql5Why && !onThink && thinkWhy;
+        return [
+          ok,
+          `pineEnabled=${onPine} mql5Enabled=${onMql5} thinkScriptEnabled=${onThink} | statesWhy pine=${pineWhy} mql5=${mql5Why} thinkScript=${thinkWhy}`,
+        ];
       },
     },
     {
@@ -1147,6 +1161,141 @@ try {
           marked.length > 0 && inClipboard && onPine.length === 0,
           `mql5MarkedLines=${marked.length} allSurviveCopy=${inClipboard} pineMarkedLines=${onPine.length}`,
         ];
+      },
+    },
+    {
+      // Greptile P1, round 1. The finding named the NEW selector, but the
+      // timeframe dropdown in the same header had the identical defect and
+      // TickerPicker held the only correct copy — so this is a CLASS, and the
+      // row proves the class rather than the instance that was reported. An
+      // overlay that cannot be dismissed is a trap on a trading surface,
+      // because the thing it covers is the chart.
+      row: "dropdowns dismiss",
+      setup: () => codePane(),
+      check: async () => {
+        const langOpen = () => evaluate(`!!document.querySelector('[data-apollo-id="code-language-mql5"]')`);
+        const tfOpen = () => evaluate(`!!document.querySelector('[data-apollo-id="tf-1h"]')`);
+        const pickerOpen = () => evaluate(`!!document.querySelector('[data-apollo-id="ticker-picker"]')`);
+        const escape = async () => {
+          await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
+          await wait(300);
+        };
+        const clickOutside = async () => {
+          await evaluate(`document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`);
+          await wait(300);
+        };
+
+        // Each sub-check must start CLOSED. Without this the Escape leg
+        // leaves the menu open when dismissal is broken, the next trigger
+        // click toggles it shut, and the outside-click leg reads a pass it
+        // did not earn — the mutation run is what surfaced that.
+        // Takes the control as an argument because the timeframe leg had the
+        // identical shape and was left unguarded when only the language leg
+        // was hardened: neutering `useDismiss` printed `timeframe reopened=false
+        // afterOutside=false`, an outside-click leg passing on a menu that was
+        // already shut. Same defect as the one this helper was written for, one
+        // leg over — so it is a parameter, not a second copy.
+        const ensureClosed = async (trigger, isOpen) => {
+          if (await isOpen()) await click(trigger);
+        };
+
+        await click("code-language");
+        const langShown = await langOpen();
+        await escape();
+        const langAfterEsc = await langOpen();
+
+        await ensureClosed("code-language", langOpen);
+        await click("code-language");
+        const langReopened = await langOpen();
+        await clickOutside();
+        const langAfterOutside = await langOpen();
+
+        // Leaving the code view must close the menu too — an overlay that
+        // survives a view change hangs over a surface that no longer owns it.
+        // Read it back ON THE CODE VIEW. The language control renders only
+        // under `view === "code"`, so querying its items from the chart view
+        // returns false because the control unmounted, whether or not the state
+        // was ever cleared — asserting there is an assertion that cannot fail,
+        // and deleting the effect entirely still printed afterViewChange=false.
+        // The defect is a menu still open when its view COMES BACK, which is
+        // the moment this now looks at.
+        await ensureClosed("code-language", langOpen);
+        await click("code-language");
+        const langBeforeView = await langOpen();
+        await click("view-chart");
+        await click("view-code");
+        const langAfterView = await langOpen();
+
+        // The sibling control that never had dismissal at all. It renders only
+        // on the chart view, so go back there for it and the picker.
+        await click("view-chart");
+        await click("timeframe");
+        const tfShown = await tfOpen();
+        await escape();
+        const tfAfterEsc = await tfOpen();
+        await ensureClosed("timeframe", tfOpen);
+        await click("timeframe");
+        const tfReopened = await tfOpen();
+        await clickOutside();
+        const tfAfterOutside = await tfOpen();
+
+        // The third consumer of useDismiss. It already had a correct inline
+        // copy and was deduplicated into the shared hook — which is exactly
+        // the change that can silently un-fix a control nobody re-checks.
+        await click("symbol-picker");
+        const pickerShown = await pickerOpen();
+        await escape();
+        const pickerAfterEsc = await pickerOpen();
+
+        const ok =
+          langShown &&
+          !langAfterEsc &&
+          langReopened &&
+          !langAfterOutside &&
+          langBeforeView &&
+          !langAfterView &&
+          tfShown &&
+          !tfAfterEsc &&
+          tfReopened &&
+          !tfAfterOutside &&
+          pickerShown &&
+          !pickerAfterEsc;
+        return [
+          ok,
+          `lang open=${langShown} afterEsc=${langAfterEsc} reopened=${langReopened} afterOutside=${langAfterOutside} afterViewChange=${langAfterView} | timeframe open=${tfShown} afterEsc=${tfAfterEsc} reopened=${tfReopened} afterOutside=${tfAfterOutside} | picker open=${pickerShown} afterEsc=${pickerAfterEsc}`,
+        ];
+      },
+    },
+    {
+      // §17b's central prohibition: never show backtest numbers beside a
+      // derived language as if it produced them. It held only because the code
+      // view happens to render none — true, and unwatched, which is what
+      // "prose gates do not run" is about. This is the assertion that trips if
+      // anyone puts a KPI strip or a summary dock on this view.
+      row: "no run numbers beside derived",
+      setup: () => codePane("mql5"),
+      check: async () => {
+        const r = await evaluate(`(() => {
+          // Deliberately DOCUMENT-wide, not pane-scoped. §17b's prohibition is
+          // that no run figure shares the screen with a derived language, so a
+          // KPI strip anywhere while MQL5 is shown is the defect — narrowing
+          // this to the pane would let one render just outside it and pass.
+          // (An earlier draft queried a 'workspace' id that never existed and
+          // fell through to document.body, so it read as scoped and was not.)
+          // NOTE: this comment lives INSIDE a template literal — no backticks.
+          const numeric = [...document.querySelectorAll('[data-apollo-id]')]
+            .map((el) => el.getAttribute('data-apollo-id'))
+            .filter((a) => /^(kpi-|equity-|summary-|backtest-)/.test(a));
+          const provenance = document.querySelector('[data-apollo-id="code-provenance"]');
+          // A percentage or a signed currency figure anywhere in the code view
+          // that is NOT part of the provenance copy.
+          const pane2 = document.querySelector('[data-apollo-id="code-editor"]')?.parentElement;
+          const text = (pane2?.innerText ?? '').replace(provenance?.innerText ?? '', '');
+          const figures = text.match(/[+-]?\\$[\\d,]+(\\.\\d+)?|\\b\\d+(\\.\\d+)?%/g) ?? [];
+          return { numeric, figures: figures.slice(0, 5), figureCount: figures.length };
+        })()`);
+        const ok = r.numeric.length === 0 && r.figureCount === 0;
+        return [ok, `runNumberSurfaces=${r.numeric.length} figuresInPane=${r.figureCount}${r.figures.length ? ` e.g. ${r.figures.join(",")}` : ""}`];
       },
     },
     {
@@ -1275,7 +1424,11 @@ try {
     for (const f of failed) console.error(`  - ${f.row}: ${f.detail}`);
   }
   process.exitCode = failed.length ? 1 : 0;
-  console.log("empty-state sweep: PASS — every row said no");
+  // This line is the LAST thing the gate says, so it is the line a human or a
+  // CI summary reads. It printed "PASS" unconditionally until 2026-08-05 — a
+  // mutated run emitted the FAILED block and then closed with PASS, which is a
+  // sentence that could not say otherwise and therefore carried no information.
+  console.log(failed.length ? "empty-state sweep: FAIL" : "empty-state sweep: PASS — every row said no");
 
 } finally {
   // `process.exit()` here would skip this block entirely — it terminates

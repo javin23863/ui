@@ -3,7 +3,7 @@
 **Status:** built. This document stays the *specification* — it says what the UI must be, not what
 the code currently does. Live build state is `docs/hot.md`; where the two disagree, this file is
 the target and the build is the defect.
-**Scope:** visual + interaction-shape parity with the reference, **plus four deliberate
+**Scope:** visual + interaction-shape parity with the reference, **plus seven deliberate
 divergences** (§0). **Capabilities explicitly out of scope** — no real LLM, no Pine compilation, no
 live market data, no real backtest engine. Everything renders from fixtures.
 **Written:** 2026-08-05 · **v2:** the two tabs become ours + voice input · **v3:** our own
@@ -470,6 +470,8 @@ Per trade:
 ## 7. Code pane (`03-code-view.png`)
 
 - Header switches to `⧉ Copy` / `▷ Run`
+- **We ship three controls**, not two — see §0g. The reference's two are the observed set; our
+  third is the §17a language selector, without which the pane speaks only to TradingView traders.
 - Line-number gutter, right-aligned, 12px `--text-muted`, ~44px wide, no separator rule
 - Line 1 (the license comment) is rendered with a full-width **selected-line highlight** band
   — a subtle `--bg-elevated` — because it is the current line; that band follows the caret

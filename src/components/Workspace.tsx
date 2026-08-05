@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Check, ChevronDown, ChevronsLeft, Code2, Copy, LineChart, Play, Settings, Star, TrendingUp, X } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
 import ChartPane from "./ChartPane";
@@ -6,7 +6,7 @@ import BacktestPanel, { summaryKpis } from "./BacktestPanel";
 import { EquityCurve } from "./charts";
 import SettingsModal from "./SettingsModal";
 import TickerPicker from "./TickerPicker";
-import { AssetBadge, cx, KpiStrip } from "../ui";
+import { AssetBadge, cx, KpiStrip, useDismiss } from "../ui";
 import type { Profile } from "../runs";
 import { equity, RUN_SYMBOL, RUN_TIMEFRAME, summary } from "../fixtures/market";
 import { CANONICAL, isDerived, LANGUAGES, languageFor, NO_EQUIVALENT, type LanguageId } from "../languages";
@@ -57,6 +57,19 @@ export default function Workspace({
   // Trade the chart is focused on, set by a Trades Log row click (§8d).
   const [focus, setFocus] = useState<{ n: number; entryTime: number; exitTime: number } | null>(null);
 
+  const langBox = useRef<HTMLDivElement>(null);
+  const tfBox = useRef<HTMLDivElement>(null);
+  useDismiss(langBox, langOpen, useCallback(() => setLangOpen(false), []));
+  useDismiss(tfBox, tfOpen, useCallback(() => setTfOpen(false), []));
+  // A dropdown left open on one view is still open when its view comes back,
+  // because the state outlives the control that renders it. Closing both on any
+  // view change is one rule rather than a clear at each of the several places
+  // that call `setView`.
+  useEffect(() => {
+    setLangOpen(false);
+    setTfOpen(false);
+  }, [view]);
+
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">
       <header className="flex h-9 shrink-0 items-center gap-3 px-4 pt-1">
@@ -102,7 +115,7 @@ export default function Workspace({
             <>
               {/* §17a — a list, not hardcoded buttons, and §0g declares it as a
                   third control in a header §7 observed as carrying two. */}
-              <div className="relative">
+              <div className="relative" ref={langBox}>
                 <button
                   data-apollo-id="code-language"
                   aria-haspopup="listbox"
@@ -242,7 +255,7 @@ export default function Workspace({
               <span className="size-1.5 rounded-full bg-profit" />
               <ChevronDown size={12} className="text-text-muted" />
             </button>
-            <div className="relative">
+            <div className="relative" ref={tfBox}>
               <button
                 data-apollo-id="timeframe"
                 onClick={() => setTfOpen((o) => !o)}

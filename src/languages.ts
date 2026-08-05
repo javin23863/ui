@@ -168,24 +168,37 @@ def bearSweep = high > high[1] and close < low[1];
 def longOk  = !useEma or close > ema200;
 def shortOk = !useEma or close < ema200;
 
-def longStop  = if slMethod == slMethod."ATR" then close - atr * atrMult else low;
-def shortStop = if slMethod == slMethod."ATR" then close + atr * atrMult else high;
+def longSignal  = bullSweep and longOk;
+def shortSignal = bearSweep and shortOk;
 
-def longTarget  = close + (close - longStop) * rr;
-def shortTarget = close - (shortStop - close) * rr;
+# The levels AS COMPUTED ON THE SIGNAL BAR.
+def longStopAt  = if slMethod == slMethod."ATR" then close - atr * atrMult else low;
+def shortStopAt = if slMethod == slMethod."ATR" then close + atr * atrMult else high;
+
+# Pine keeps stopPrice and targetPrice in var floats: set once at entry, then
+# unchanged for the life of the position. These are latched with rec for that
+# reason. Recomputing them from each new bar's close and ATR would walk the
+# stop and the target along with price, which is a different strategy - it can
+# never be stopped out on a trend against it.
+rec longStop    = if longSignal  then longStopAt  else longStop[1];
+rec shortStop   = if shortSignal then shortStopAt else shortStop[1];
+rec longTarget  = if longSignal  then close + (close - longStopAt) * rr else longTarget[1];
+rec shortTarget = if shortSignal then close - (shortStopAt - close) * rr else shortTarget[1];
 
 # ${NO_EQUIVALENT} Pine reads strategy.position_size to take a signal only
 # while flat. thinkScript exposes no position size to a study, so the
 # flat-only guard cannot be written and every qualifying bar signals - which
 # is a different strategy on any instrument that sweeps twice in a row.
-AddOrder(OrderType.BUY_TO_OPEN,  bullSweep and longOk,  name = "Long");
-AddOrder(OrderType.SELL_TO_OPEN, bearSweep and shortOk, name = "Short");
+AddOrder(OrderType.BUY_TO_OPEN,  longSignal,  name = "Long");
+AddOrder(OrderType.SELL_TO_OPEN, shortSignal, name = "Short");
 
 # ${NO_EQUIVALENT} Pine's strategy.exit attaches a stop AND a limit to the
-# position as one bracket, where the first to fill cancels the other.
-# thinkScript's AddOrder has no attached bracket, so these are separate
-# price-cross orders that do not cancel one another: a bar touching both the
-# stop and the target fills both.
+# position as one bracket, where the first to fill cancels the other and both
+# are live intrabar. thinkScript's AddOrder has no attached bracket, so these
+# are separate orders that do not cancel one another - a bar touching both the
+# stop and the target fills both - and they are evaluated on the CLOSE of a
+# bar rather than the moment price crosses, so a level pierced and recovered
+# inside one bar exits in Pine and does not exit here.
 AddOrder(OrderType.SELL_TO_CLOSE, low <= longStop[1] or high >= longTarget[1], name = "Exit Long");
 AddOrder(OrderType.BUY_TO_CLOSE, high >= shortStop[1] or low <= shortTarget[1], name = "Exit Short");
 
