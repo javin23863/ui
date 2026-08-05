@@ -36,10 +36,15 @@ const dt = (t: number) =>
   });
 
 export default function TradesLog({
+  rows: source = trades,
   costsModelled = true,
   regimesTagged = true,
   onShowOnChart,
 }: {
+  /** The rows of the SELECTED run. The log used to read the full ledger
+   *  regardless of profile, so a profile that cut the run to 11 trades still
+   *  listed all 47 here — the same run described two ways in adjacent tabs. */
+  rows?: Trade[];
   costsModelled?: boolean;
   /** §11: an untagged run shows `—` in Regime here, not a guessed label. */
   regimesTagged?: boolean;
@@ -50,13 +55,13 @@ export default function TradesLog({
   const [sort, setSort] = useState<{ key: keyof Trade; dir: 1 | -1 }>({ key: "n", dir: 1 });
 
   const rows = useMemo(() => {
-    const f = trades.filter((t) => (side === "All" || t.side === side) && (sample === "All" || t.sample === sample));
+    const f = source.filter((t) => (side === "All" || t.side === side) && (sample === "All" || t.sample === sample));
     return [...f].sort((a, b) => {
       const x = a[sort.key];
       const y = b[sort.key];
       return (typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y))) * sort.dir;
     });
-  }, [side, sample, sort]);
+  }, [source, side, sample, sort]);
 
   const tot = rows.reduce(
     (s, t) => ({ gross: s.gross + t.gross, costs: s.costs + (t.costs ?? 0), net: s.net + t.net }),

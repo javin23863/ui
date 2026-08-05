@@ -20,8 +20,8 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Spec | `docs/UI-NEXT-INCREMENT.md` §15 |
 | Card | `consumer.ui-strategy-library` — **active** |
 | plan-warden | ON PLAN WITH CORRECTIONS, all four applied (see below) |
-| Gates | sweep **19/19**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
-| Greptile | rounds 1–4 found **five P1s, all real, all fixed** — see below |
+| Gates | sweep **20/20**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
+| Greptile | rounds 1–5, **six P1s, all real, all fixed** — see below |
 
 Reachable from the rail's `History` button. Star in the backtest header saves the run **as shown**,
 so an entry's numbers and its adequacy chips come from the same profile the reader is looking at.
@@ -118,12 +118,18 @@ the curve ended at the cost-deducted total directly beneath a cost-free Net Prof
 so the caller says which run it is describing. `equityFor` **recomputes** cumulative net rather than
 reading the precomputed `t.cum`, which is what a cost-free presentation requires.
 
-> **OPEN, pre-existing, NOT fixed here — needs its own card.** The `thin` profile slices
-> `Trades Analysis` to 11 trades, but the **Trades Log still lists all 47** and the Performance tab
-> still totals all 47. Only the cost treatment was unified in this PR; the row-count slicing was
-> deliberately left alone, because slicing the Performance tab on its own would have traded a cost
-> inconsistency for a row-count one against the log sitting next to it. Fixing it properly means
-> threading the profile's rows through `TradesLog` too, which is §8 work, not §15.
+**Round 5 closed the class.** It named the gap recorded above rather than accepting it: the `thin`
+profile cut `Trades Analysis` to 11 trades while the Trades Log listed all 47 and Performance
+totalled 47 — one selected run described three ways in three adjacent tabs. `BacktestPanel` now
+computes **one** `runRows = presentedRowsFor(profile)` and hands the same set to Performance, Trades
+Analysis and the Trades Log; `metricsFor`, `summaryKpis`, `equityFor`, `dailyPnlFor` and
+`weekdayPnlFor` all take rows, and `TradesLog` takes a `rows` prop instead of importing the ledger.
+Row `every tab shows the same run` asserts all three report 11 under `thin`; mutated back it reads
+`analysis=11 log=47 performance=47`.
+
+> **The recorded-as-known-gap was the wrong call and the reviewer was right to reject it.** Writing
+> a contradiction down is not the same as not shipping one. It is worth doing only when the fix is
+> genuinely out of reach — this one was a prop.
 
 > **Do not read "this profile is only a demo switch" as permission to leave it inconsistent.** The
 > profile switch is what makes every refusal in this build demonstrable. A run profile that two
@@ -181,7 +187,7 @@ npx tsc -b                # clean
 npm run build             # clean
 node scripts/parity.mjs   # regenerates all seven parity sheets
 node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
-node scripts/sweep.mjs    # empty-state sweep, 19 rows, asserts and exits non-zero
+node scripts/sweep.mjs    # empty-state sweep, 20 rows, asserts and exits non-zero
 ```
 
 The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:

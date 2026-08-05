@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Minimize2, Star } from "lucide-react";
 import { CategoryBars, DailyPnl, EquityCurve } from "./charts";
 import { AssetBadge, Card, cx, KpiStrip, Legend, Signed } from "../ui";
-import { asPresented, dailyPnlFor, equityFor, metricsFor, type SideFilter, statsFor, summary, trades, weekdayPnlFor } from "../fixtures/market";
-import { costsModelledFor, type Profile } from "../runs";
+import { dailyPnlFor, equityFor, metricsFor, type SideFilter, statsFor, summary, trades, weekdayPnlFor } from "../fixtures/market";
+import { costsModelledFor, type Profile, presentedRowsFor } from "../runs";
 import TradesAnalysis from "./TradesAnalysis";
 import TradesLog from "./TradesLog";
 
@@ -52,6 +52,12 @@ export default function BacktestPanel({
   // Owned here so every tab sees the same run (§11 empty-state sweep).
   const [profile, setProfile] = useState<Profile>("full");
   const runSaved = isRunSaved?.(profile) ?? false;
+  // ONE snapshot for every tab. The profile decides which trades the run has and
+  // how it reports costs, and Performance, Trades Analysis and the Trades Log
+  // all render that same set — otherwise the same selected run shows different
+  // trade counts and different nets depending on which tab is open.
+  const runRows = presentedRowsFor(profile);
+  const costsModelled = costsModelledFor(profile);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -104,32 +110,26 @@ export default function BacktestPanel({
       <div className="shrink-0 border-b border-border" />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-        {tab === "Performance" && <Performance profile={profile} />}
+        {tab === "Performance" && <Performance rows={runRows} />}
         {tab === "Trades Analysis" && <TradesAnalysis profile={profile} setProfile={setProfile} />}
         {tab === "Trades Log" && (
-          <TradesLog costsModelled={profile !== "no-costs"} regimesTagged={profile !== "no-regimes"} onShowOnChart={onShowOnChart} />
+          <TradesLog
+            rows={runRows}
+            costsModelled={costsModelled}
+            regimesTagged={profile !== "no-regimes"}
+            onShowOnChart={onShowOnChart}
+          />
         )}
       </div>
     </div>
   );
 }
 
-function Performance({ profile }: { profile: Profile }) {
+function Performance({ rows }: { rows: typeof trades }) {
   // Two independent slices — the weekday card and the metrics table each carry
   // their own control in the reference, so neither drives the other.
   const [metricsSide, setMetricsSide] = useState<SideFilter>("All");
   const [weekdaySide, setWeekdaySide] = useState<SideFilter>("All");
-  // Every figure on this tab — curve, bars, strip and table — reads the SAME
-  // rows under the SAME cost treatment. The charts used to read the module-level
-  // full-run consts, so under `no-costs` the curve ended at the cost-deducted
-  // total directly under a cost-free Net Profit.
-  //
-  // Deliberately the full ledger, not `presentedRowsFor(profile)`: this tab has
-  // never been sliced by the `thin` profile and the Trades Log is not either, so
-  // slicing only this one would trade a cost inconsistency for a row-count one.
-  // That gap is real and pre-existing — see hot.md — and needs its own card.
-  const costsModelled = costsModelledFor(profile);
-  const rows = asPresented(trades, costsModelled);
 
   return (
     <>
@@ -159,7 +159,7 @@ function Performance({ profile }: { profile: Profile }) {
           <SideTabs value={metricsSide} onChange={setMetricsSide} idPrefix="metrics-filter" />
         </div>
         <dl>
-          {metricsFor(metricsSide, costsModelled).map((m) => (
+          {metricsFor(metricsSide, rows).map((m) => (
             <div key={m.label} className="flex items-center justify-between border-t border-border py-2">
               <dt className="text-[13px]">{m.label}</dt>
               <dd className={cx("tnum text-[13px]", m.tone === "profit" && "text-profit", m.tone === "loss" && "text-loss")}>{m.value}</dd>

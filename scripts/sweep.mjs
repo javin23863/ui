@@ -502,6 +502,40 @@ try {
       },
     },
     {
+      // One selected run, one trade count, whichever tab is open. The thin
+      // profile cut Trades Analysis to 11 while the Trades Log still listed all
+      // 47 and Performance still totalled 47 — the same run described three
+      // ways in three adjacent tabs.
+      row: "every tab shows the same run",
+      setup: async () => {
+        await load();
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("profile-thin");
+      },
+      check: async () => {
+        const analysis = await evaluate(`(() => {
+          const d = [...document.querySelectorAll('div')].find(
+            (x) => x.children.length === 2 && /^TRADES$/i.test(x.children[0]?.textContent?.trim() ?? ''),
+          );
+          return d ? Number(d.children[1].textContent.replace(/[^0-9]/g, '')) : NaN;
+        })()`);
+        await click("tab-trades-log");
+        const log = await evaluate(
+          `document.querySelector('[data-apollo-id="trades-log"]')?.querySelectorAll('tbody tr').length ?? -1`,
+        );
+        await click("tab-performance");
+        const perf = await evaluate(`(() => {
+          const d = [...document.querySelectorAll('div')].find(
+            (x) => x.children.length === 2 && /^TRADES$/i.test(x.children[0]?.textContent?.trim() ?? ''),
+          );
+          return d ? Number(d.children[1].textContent.replace(/[^0-9]/g, '')) : NaN;
+        })()`);
+        const ok = analysis === 11 && log === 11 && perf === 11;
+        return [ok, `analysis=${analysis} log=${log} performance=${perf} (thin profile is 11 trades)`];
+      },
+    },
+    {
       // The same strategy under a different profile is a different run. Saving
       // one must not make the star claim the other is already kept.
       row: "another profile saves separately",

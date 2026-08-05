@@ -389,8 +389,10 @@ const tone = (n: number): "profit" | "loss" => (n >= 0 ? "profit" : "loss");
 export const asPresented = (rows: typeof trades, costsModelled: boolean) =>
   costsModelled ? rows : rows.map((t) => ({ ...t, costs: 0, net: t.gross }));
 
-export function metricsFor(side: SideFilter = "All", costsModelled = true): Metric[] {
-  const s = statsFor(asPresented(bySide(side), costsModelled));
+/** `from` is the run's rows AS PRESENTED — the caller has already applied the
+ *  profile's slice and cost treatment, so this only picks the side. */
+export function metricsFor(side: SideFilter = "All", from: typeof trades = trades): Metric[] {
+  const s = statsFor(bySide(side, from));
   return [
     { label: "Net Profit", value: money(s.netProfit), tone: tone(s.netProfit) },
     { label: "Open PnL", value: "0.00 USD" },
