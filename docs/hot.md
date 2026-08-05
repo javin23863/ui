@@ -14,7 +14,8 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 | | |
 |---|---|
-| Spec | `docs/UI-PARITY-SPEC.md` — read it; this file does not restate it |
+| Spec | `docs/UI-PARITY-SPEC.md` — the parity plan, P0-P6, **complete** |
+| Next increment | `docs/UI-NEXT-INCREMENT.md` — Strategy Library (§15), Screeners (§16), indicators + TV/MT5 (§17). Operator-directed 2026-08-05, plan only |
 | `main` | carries **everything**: spec, `src/`, `scripts/`, `docs/parity/`, `docs/reference/` |
 | PR #1 | `docs/ui-parity-spec` → MERGED |
 | PR #2 | `feat/ui-build` → **MERGED** at `7fefff7`, Greptile 5/5 with zero findings at that head |
