@@ -20,7 +20,8 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Spec | `docs/UI-NEXT-INCREMENT.md` §15 |
 | Card | `consumer.ui-strategy-library` — **active** |
 | plan-warden | ON PLAN WITH CORRECTIONS, all four applied (see below) |
-| Gates | sweep **15/15**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
+| Gates | sweep **17/17**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
+| Greptile | round 1 found **two P1s, both real, both fixed** — see below |
 
 Reachable from the rail's `History` button. Star in the backtest header saves the run **as shown**,
 so an entry's numbers and its adequacy chips come from the same profile the reader is looking at.
@@ -45,7 +46,30 @@ Nothing persists. The panel says so on screen — §15's rule is that a save mus
 `p5-backtest` parity sheet; seeding the loaded run rendered it already-saved in that frame, which
 would have been a parity divergence introduced by a demo fixture rather than by a decision.
 
-**Proven by mutation 2026-08-05**, all five new rows at once: seed unconditionally → `cards=5`;
+**Greptile round 1 found the defect class again, in the code that was written to prevent it.**
+Two P1s, both real:
+
+1. **`captureCurrentRun` took `facts` from the selected profile but `netProfit`, `winRate`,
+   `profitFactor`, `maxDrawdown` and `rangeLabel` from the full-run `summary`.** Saving under the
+   thin profile produced a card reading *11 trades* beside the whole ledger's +1,999.70 over the
+   whole ledger's date range. **The docstring on that function claimed "numbers come from the same
+   call the panel reads" while the body did the opposite** — the comment asserted the property it
+   was breaking, which is worse than no comment. Fixed by computing every saved metric from
+   `statsFor(rowsFor(profile))`, the same slice `factsForProfile` uses, and deriving the range from
+   the slice's own first entry and last exit. `statsFor` is now exported from `market.ts` rather
+   than reimplemented.
+2. **The saved-run identity omitted the profile**, so after saving `Full run` the star stayed filled
+   under `Costs not modelled` and silently dropped the second save. `profile` is now part of
+   `SavedRun` and of the identity check, and because the profile lives in the backtest panel the
+   check is passed down as `isRunSaved(profile)` rather than resolved as a boolean in `App`.
+
+Greptile ran these in a browser and attached the recordings; **our own sweep had 15 green rows and
+caught neither**. Two rows added so they cannot come back — `save keeps its own profile numbers`
+and `another profile saves separately` — and both were mutation-proven by restoring the exact bugs.
+The lesson is narrow and worth keeping: **every row of the sweep asserted a refusal, and neither
+defect was a refusal.** A panel that says no correctly can still put the wrong number on the screen.
+
+**Proven by mutation 2026-08-05**, all five original rows at once: seed unconditionally → `cards=5`;
 flip `fixtureAvailable` → `rendersNumbersAnyway=true`; default sort to `return` → `ordersDiffer=false`;
 gut the notice → row fails on its text; drop the archived filter → `inActiveView=true`. Exactly the
 five new rows flipped and the ten pre-existing rows stayed green, which is what makes it a valid

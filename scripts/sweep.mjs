@@ -339,6 +339,64 @@ try {
       },
     },
     {
+      // A save must carry the numbers of the run it was taken from. An earlier
+      // build stored the selected profile's trade COUNT beside the full
+      // ledger's net, win rate and date range — "11 trades" over a 37-month
+      // span earning the whole run's money.
+      row: "save keeps its own profile numbers",
+      setup: async () => {
+        await load();
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("profile-thin");
+        await click("favourite-run");
+        await click("rail-history");
+      },
+      check: async () => {
+        const r = await evaluate(`(() => {
+          const cards = [...document.querySelectorAll('[data-apollo-id^="library-card-"]')];
+          const el = cards.find((c) => /Sweep and Engulf Strategy/.test(c.innerText));
+          if (!el) return { card: false };
+          const read = (label) => {
+            const row = [...el.querySelectorAll('div')].find(
+              (d) => d.querySelector('dt') && d.querySelector('dt').textContent.trim() === label,
+            );
+            return row ? row.querySelector('dd').textContent.trim() : null;
+          };
+          return { card: true, trades: read('Trades'), net: read('Net'), text: el.innerText };
+        })()`);
+        if (!r.card) return [false, "the starred run is not in the library"];
+        const trades = Number(r.trades);
+        // The full ledger is 47 trades netting 1,999.70 over Jun 2023 - Jul 2026.
+        const fullNet = /1,?999\.70/.test(r.net ?? "");
+        const fullRange = /Jun 4, 2023/.test(r.text ?? "");
+        return [
+          trades === 11 && !fullNet && !fullRange,
+          `trades=${trades} net=${r.net} showsFullRunNet=${fullNet} showsFullRunRange=${fullRange}`,
+        ];
+      },
+    },
+    {
+      // The same strategy under a different profile is a different run. Saving
+      // one must not make the star claim the other is already kept.
+      row: "another profile saves separately",
+      setup: async () => {
+        await load();
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("favourite-run"); // full run
+        await click("profile-thin");
+        await click("favourite-run"); // thin run — a different run
+        await click("rail-history");
+      },
+      check: async () => {
+        const n = await evaluate(
+          `[...document.querySelectorAll('[data-apollo-id^="library-card-"]')].filter((c) => /Sweep and Engulf Strategy/.test(c.innerText)).length`,
+        );
+        return [n === 2, `saved snapshots of the same strategy = ${n} (expected 2: full and thin)`];
+      },
+    },
+    {
       // §15c — abandoned runs leave the default view but are never destroyed.
       row: "archived run is kept, not deleted",
       setup: () => library(),

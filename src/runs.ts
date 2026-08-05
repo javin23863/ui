@@ -1,4 +1,4 @@
-import { summary, pineSource, trades } from "./fixtures/market";
+import { summary, pineSource, statsFor, trades } from "./fixtures/market";
 
 /**
  * The run model, and the ONE place the adequacy thresholds live.
@@ -98,6 +98,13 @@ export type SavedRun = {
   timeframe: string;
   rangeLabel: string;
   strategy: string;
+  /**
+   * Part of the run's IDENTITY, not decoration. The same strategy on the same
+   * instrument and timeframe is a different run under a different profile — it
+   * has different trades and different numbers — so two such saves must both be
+   * keepable, and the star must not report the second one as already saved.
+   */
+  profile: Profile;
   source: string;
   /** The facts as they were AT SAVE TIME. A saved run is immutable. */
   facts: RunFacts;
@@ -138,21 +145,43 @@ export const SORTS = [
 
 export type SortId = (typeof SORTS)[number]["id"];
 
-/** Capture the run that is on screen. Numbers come from the same call the panel reads. */
+const day = (t: number) =>
+  new Date(t * 1000).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+/**
+ * Capture the run that is on screen.
+ *
+ * EVERY number here comes from the same row slice the panel is showing. An
+ * earlier version took `facts` from the selected profile but `netProfit`,
+ * `winRate`, `profitFactor`, `maxDrawdown` and `rangeLabel` from the full-run
+ * `summary`, so saving under the thin profile produced a card reading "11
+ * trades" beside the full ledger's net over the full ledger's date range. That
+ * is the defect this build has bought six times wearing a new hat, and the
+ * comment on this function asserted the property it was breaking.
+ */
 export function captureCurrentRun(profile: Profile, parentId: string | null = null): SavedRun {
+  const rows = rowsFor(profile);
+  const s = statsFor(rows);
   return {
     id: `run-${Date.now()}`,
     savedAt: Date.now(),
     symbol: summary.symbol,
     timeframe: summary.timeframe,
-    rangeLabel: summary.rangeLabel,
+    // The slice's own span, not the whole ledger's.
+    rangeLabel: rows.length ? `${day(rows[0].entryTime)} – ${day(rows[rows.length - 1].exitTime)}` : "No trades",
     strategy: summary.strategy,
+    profile,
     source: pineSource,
     facts: factsForProfile(profile),
-    netProfit: summary.netProfit,
-    winRate: summary.winRate,
-    profitFactor: summary.profitFactor,
-    maxDrawdown: summary.maxDrawdown,
+    netProfit: s.netProfit,
+    winRate: s.winRate,
+    profitFactor: s.profitFactor,
+    maxDrawdown: s.maxDrawdown,
     parentId,
     archived: false,
     fixtureAvailable: true,
@@ -187,6 +216,7 @@ export const SEEDED_RUNS: SavedRun[] = [
     timeframe: "1h",
     rangeLabel: "Jan 3, 2024 – Jul 15, 2026",
     strategy: "Liquidity Sweep Reversal",
+    profile: "full",
     source: pineSource,
     facts: { trades: 138, perMonth: 4.2, top3Share: 18, costsModelled: true, holdout: "ok" },
     netProfit: 5240.75,
@@ -204,6 +234,7 @@ export const SEEDED_RUNS: SavedRun[] = [
     timeframe: "15m",
     rangeLabel: "Feb 1, 2026 – Jul 15, 2026",
     strategy: "Martingale Grid",
+    profile: "full",
     source: pineSource,
     // Highest headline in the library and the least able to support it.
     facts: { trades: 9, perMonth: 1.6, top3Share: 88, costsModelled: false, holdout: "undeclared" },
@@ -222,6 +253,7 @@ export const SEEDED_RUNS: SavedRun[] = [
     timeframe: "1h",
     rangeLabel: "Jan 3, 2024 – Jul 15, 2026",
     strategy: "Liquidity Sweep Reversal (wider stop)",
+    profile: "full",
     source: pineSource,
     facts: { trades: 41, perMonth: 1.1, top3Share: 34, costsModelled: true, holdout: "declared-empty" },
     netProfit: 1204.35,
@@ -241,6 +273,7 @@ export const SEEDED_RUNS: SavedRun[] = [
     timeframe: "5m",
     rangeLabel: "Jan 2, 2026 – Mar 28, 2026",
     strategy: "Opening Range Breakout",
+    profile: "full",
     source: pineSource,
     facts: { trades: 212, perMonth: 70.6, top3Share: 12, costsModelled: true, holdout: "ok" },
     netProfit: -884.1,
@@ -258,6 +291,7 @@ export const SEEDED_RUNS: SavedRun[] = [
     timeframe: "1h",
     rangeLabel: "Sep 1, 2025 – Dec 19, 2025",
     strategy: "VWAP Fade",
+    profile: "full",
     source: pineSource,
     facts: { trades: 63, perMonth: 15.8, top3Share: 21, costsModelled: true, holdout: "ok" },
     netProfit: 3117.6,

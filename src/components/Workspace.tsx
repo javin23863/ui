@@ -20,14 +20,14 @@ export default function Workspace({
   onCollapseChat,
   chatCollapsed,
   onSaveRun,
-  runSaved,
+  isRunSaved,
 }: {
   title: string;
   hasStrategy: boolean;
   onCollapseChat: () => void;
   chatCollapsed: boolean;
   onSaveRun?: (profile: Profile) => void;
-  runSaved?: boolean;
+  isRunSaved?: (profile: Profile) => boolean;
 }) {
   const [view, setView] = useState<View>("chart");
   const [settings, setSettings] = useState(false);
@@ -145,7 +145,7 @@ export default function Workspace({
         <BacktestPanel
           onCollapse={() => setView("chart")}
           onSaveRun={onSaveRun}
-          runSaved={runSaved}
+          isRunSaved={isRunSaved}
           onShowOnChart={(t) => {
             // A trade only exists on the chart it was taken on, so go there
             // rather than pointing at its timestamps on whatever is loaded.

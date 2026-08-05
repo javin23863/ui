@@ -54,14 +54,22 @@ export default function App() {
   const [runs, setRuns] = useState<SavedRun[]>(SEEDED ? SEEDED_RUNS : []);
   const [library, setLibrary] = useState(false);
 
-  // A run is already in the library if the same strategy, instrument and
-  // timeframe are there — starring twice must not create a second copy.
-  const runSaved = runs.some(
-    (r) => r.strategy === summary.strategy && r.symbol === summary.symbol && r.timeframe === summary.timeframe,
-  );
+  // Identity includes the PROFILE. The same strategy, instrument and timeframe
+  // under a different profile is a different run with different trades and
+  // different numbers, so it must be separately keepable — and the star must
+  // not report it as already saved. The profile lives in the backtest panel, so
+  // the check is passed down rather than resolved here.
+  const isRunSaved = (profile: Profile) =>
+    runs.some(
+      (r) =>
+        r.strategy === summary.strategy &&
+        r.symbol === summary.symbol &&
+        r.timeframe === summary.timeframe &&
+        r.profile === profile,
+    );
 
   const saveRun = (profile: Profile) => {
-    if (runSaved) return;
+    if (isRunSaved(profile)) return;
     setRuns((rs) => [captureCurrentRun(profile), ...rs]);
   };
 
@@ -145,7 +153,7 @@ export default function App() {
                 chatCollapsed={collapsed}
                 onCollapseChat={() => setCollapsed((c) => !c)}
                 onSaveRun={saveRun}
-                runSaved={runSaved}
+                isRunSaved={isRunSaved}
               />
             )}
           </div>

@@ -280,7 +280,7 @@ export const weekdayPnl = weekdayPnlFor();
  * series rather than the whole run's, so filtering to Long does not quietly keep
  * showing the drawdown a short caused.
  */
-function statsFor(rows: typeof trades) {
+export function statsFor(rows: typeof trades) {
   const wins = rows.filter((t) => t.net > 0);
   const losses = rows.filter((t) => t.net <= 0);
   const grossProfit = wins.reduce((s, t) => s + t.net, 0);

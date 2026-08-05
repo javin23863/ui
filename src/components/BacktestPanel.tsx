@@ -35,18 +35,20 @@ export default function BacktestPanel({
   onCollapse,
   onShowOnChart,
   onSaveRun,
-  runSaved = false,
+  isRunSaved,
 }: {
   onCollapse: () => void;
   onShowOnChart?: (t: { n: number; entryTime: number; exitTime: number }) => void;
   /** §15a — saves the run AS SHOWN, so the entry's numbers and its adequacy
    *  chips come from the same profile the reader is looking at. */
   onSaveRun?: (profile: Profile) => void;
-  runSaved?: boolean;
+  /** Asked per profile, not once: switching profile changes which run this is. */
+  isRunSaved?: (profile: Profile) => boolean;
 }) {
   const [tab, setTab] = useState<Tab>("Performance");
   // Owned here so every tab sees the same run (§11 empty-state sweep).
   const [profile, setProfile] = useState<Profile>("full");
+  const runSaved = isRunSaved?.(profile) ?? false;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
