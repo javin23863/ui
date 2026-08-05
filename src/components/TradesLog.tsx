@@ -37,9 +37,12 @@ const dt = (t: number) =>
 
 export default function TradesLog({
   costsModelled = true,
+  regimesTagged = true,
   onShowOnChart,
 }: {
   costsModelled?: boolean;
+  /** §11: an untagged run shows `—` in Regime here, not a guessed label. */
+  regimesTagged?: boolean;
   onShowOnChart?: (t: Trade) => void;
 }) {
   const [side, setSide] = useState<"All" | "Long" | "Short">("All");
@@ -161,7 +164,7 @@ export default function TradesLog({
                 <td className="tnum px-2.5 py-1.5 text-right">
                   <Signed value={t.cum} />
                 </td>
-                <td className="px-2.5 py-1.5 whitespace-nowrap text-text-muted">{t.regime ?? "—"}</td>
+                <td className="px-2.5 py-1.5 whitespace-nowrap text-text-muted">{regimesTagged ? (t.regime ?? "—") : "—"}</td>
                 <td className="px-2.5 py-1.5">
                   <Chip tone={t.sample === "OOS" ? "accent" : "neutral"}>{t.sample}</Chip>
                 </td>

@@ -128,12 +128,37 @@ try {
 
   const DATA_ROWS = [
     {
+      // §11 declares TWO behaviours for this one input: the cost-sensitivity
+      // card refuses, AND the log shows a banner with a `—` costs column.
+      // Checking only the card left the log free to regress to a displayed
+      // 0.00 with the gate still green.
       row: "costs not modelled",
       setup: () => analysisUnder("no-costs"),
       check: async () => {
-        const t = await bodyText();
-        const refused = /Spread and commissions not modelled/i.test(t);
-        return [refused, refused ? "cost card refuses" : "no refusal text found"];
+        const card = /Spread and commissions not modelled/i.test(await bodyText());
+        await click("tab-trades-log");
+        const log = await evaluate(`(() => {
+          const banner = /Costs not modelled/i.test(document.body.innerText);
+          const table = document.querySelector('[data-apollo-id="trades-log"]');
+          if (!table) return { banner, table: false };
+          const head = [...table.querySelectorAll('thead th')].map((th) => th.textContent.trim());
+          const col = head.findIndex((h) => /^costs$/i.test(h));
+          const cells = [...table.querySelectorAll('tbody tr')]
+            .map((tr) => tr.querySelectorAll('td')[col]?.textContent?.trim())
+            .filter((v) => v !== undefined);
+          return {
+            banner,
+            table: true,
+            col,
+            dashes: cells.every((v) => v === "—"),
+            sample: cells.slice(0, 3),
+          };
+        })()`);
+        const ok = card && log.banner && log.table && log.col >= 0 && log.dashes;
+        return [
+          ok,
+          `card=${card} logBanner=${log.banner} costsColumn=${log.table ? log.sample?.join(",") : "no table"}`,
+        ];
       },
     },
     {
@@ -190,10 +215,35 @@ try {
     {
       row: "thin regime row → muted + Thin",
       setup: () => analysisUnder(null),
+      // Scoped to the row, and requires BOTH signals. Searching the whole page
+      // for "thin" passed on the `Thin sample` chip belonging to a different
+      // panel entirely — the row could lose its muted styling and its marker
+      // and the gate would still have gone green.
       check: async () => {
-        const t = await bodyText();
-        const has = /thin/i.test(t);
-        return [has, has ? "thin marker present in regime table" : "no thin marker on any regime row"];
+        const r = await evaluate(`(() => {
+          const table = document.querySelector('[data-apollo-id="regime-table"]');
+          if (!table) return { table: false };
+          const rows = [...table.querySelectorAll('tbody tr')];
+          const parsed = rows.map((tr) => {
+            const cells = tr.querySelectorAll('td');
+            return {
+              n: Number(cells[1]?.textContent?.trim() ?? NaN),
+              muted: tr.className.includes('text-text-muted'),
+              marker: /\\bThin\\b/.test(cells[0]?.textContent ?? ''),
+            };
+          });
+          return { table: true, rows: parsed };
+        })()`);
+        if (!r.table) return [false, "no regime table rendered"];
+        const thinRows = r.rows.filter((x) => x.n < 10);
+        if (!thinRows.length) return [false, `no row under 10 trades to check (rows: ${r.rows.length})`];
+        const bad = thinRows.filter((x) => !x.muted || !x.marker);
+        return [
+          bad.length === 0,
+          bad.length === 0
+            ? `${thinRows.length} thin row(s), each muted AND carrying a row-local Thin marker`
+            : `${bad.length} thin row(s) missing muted styling or the row-local marker`,
+        ];
       },
     },
   ];
@@ -281,12 +331,33 @@ try {
   if (failed.length) {
     console.error(`\nEMPTY-STATE SWEEP FAILED — ${failed.length} row(s) rendered a number where they should have said no:`);
     for (const f of failed) console.error(`  - ${f.row}: ${f.detail}`);
-    process.exit(1);
   }
+  process.exitCode = failed.length ? 1 : 0;
   console.log("empty-state sweep: PASS — every row said no");
-  process.exit(0);
 
 } finally {
-  try { sock.close(); } catch {}
+  // `process.exit()` here would skip this block entirely — it terminates
+  // immediately — so the exit code is SET and the process is left to end on its
+  // own. An earlier version called process.exit() inside the try and this
+  // cleanup never ran once.
+  try {
+    await clearInjected();
+    // The permission-denied fixture writes tc.voice.consent=1, and localStorage
+    // is origin-scoped across the whole browser profile, not the tab. Left
+    // behind, a later real visit treats consent as already granted and starts
+    // microphone capture without asking. Clear it unconditionally.
+    await send("Page.navigate", { url: "http://localhost:5199/" });
+    await wait(900);
+    await evaluate(`localStorage.removeItem('tc.voice.consent')`);
+    const left = await evaluate(`localStorage.getItem('tc.voice.consent')`);
+    if (left !== null) console.error(`WARNING: voice consent key still set (${left}) — clear it by hand`);
+  } catch (e) {
+    console.error(`cleanup failed, clear localStorage 'tc.voice.consent' by hand: ${e.message}`);
+  }
+  try {
+    sock.close();
+  } catch {
+    /* already closed */
+  }
   await closeTab();
 }
