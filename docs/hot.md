@@ -21,7 +21,7 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Card | `consumer.ui-strategy-library` — **active** |
 | plan-warden | ON PLAN WITH CORRECTIONS, all four applied (see below) |
 | Gates | sweep **20/20**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
-| Greptile | rounds 1–5, **six P1s, all real, all fixed** — see below |
+| Greptile | rounds 1–6, **seven P1s, all real, all fixed**; one finding re-posted 4× is a FALSE POSITIVE — see below |
 
 Reachable from the rail's `History` button. Star in the backtest header saves the run **as shown**,
 so an entry's numbers and its adequacy chips come from the same profile the reader is looking at.
@@ -130,6 +130,21 @@ Row `every tab shows the same run` asserts all three report 11 under `thin`; mut
 > **The recorded-as-known-gap was the wrong call and the reviewer was right to reject it.** Writing
 > a contradiction down is not the same as not shipping one. It is worth doing only when the fix is
 > genuinely out of reach — this one was a prop.
+
+**Round 6 found a derived field left behind.** `asPresented` replaced each trade's `net` with its
+`gross` but kept the cost-deducted `cum`, so the Trades Log's `Cum. net` column stopped being the
+running sum of the `Net` column beside it and landed short by exactly the modelled costs. It now
+recomputes `cum` too. The `no-costs IS/OOS sums to the run` row also asserts the last `Cum. net`
+equals the run's net; mutated it reads `last Cum. net=1999.7 → DISAGREE` against a net of 2587.7.
+
+> **FALSE POSITIVE, re-posted in rounds 3, 4, 5 and 6 — do not "fix" it again.** `runs.ts` *No-costs
+> warning uses deducted returns*, claiming `factsForProfile` derives `top3Share` from cost-deducted
+> `t.net`. It did, and it was fixed at `43c60e2`; `factsForProfile` reads `presentedRowsFor(profile)`
+> and there is no `rowsFor` call left in it. Verified in a browser three times, not by reading the
+> diff: the sweep row recomputes the share from the rendered Trades Log and gets
+> `ledger=194% panel=194% card=194%`. The 249% the finding describes is what that row reports when
+> `factsForProfile` is deliberately mutated back to raw rows — which is the mutation proof, not the
+> live behaviour.
 
 > **Do not read "this profile is only a demo switch" as permission to leave it inconsistent.** The
 > profile switch is what makes every refusal in this build demonstrable. A run profile that two

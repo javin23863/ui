@@ -386,8 +386,19 @@ const tone = (n: number): "profit" | "loss" => (n >= 0 ? "profit" : "loss");
  * screen, and they disagreed by exactly the costs the profile claimed were not
  * modelled.
  */
-export const asPresented = (rows: typeof trades, costsModelled: boolean) =>
-  costsModelled ? rows : rows.map((t) => ({ ...t, costs: 0, net: t.gross }));
+export const asPresented = (rows: typeof trades, costsModelled: boolean) => {
+  if (costsModelled) return rows;
+  // `cum` is a running sum of `net`, so replacing net without replacing cum
+  // leaves the Trades Log's `Cum. net` column no longer the running total of
+  // the Net column beside it — it lands short by exactly the costs the profile
+  // says were not modelled. A derived field left behind is the same defect as a
+  // label left behind.
+  let cum = 0;
+  return rows.map((t) => {
+    cum = round2(cum + t.gross);
+    return { ...t, costs: 0, net: t.gross, cum };
+  });
+};
 
 /** `from` is the run's rows AS PRESENTED — the caller has already applied the
  *  profile's slice and cost treatment, so this only picks the side. */

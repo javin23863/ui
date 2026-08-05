@@ -490,6 +490,20 @@ try {
           return { is, oos, kpiPresent: !!kpi };
         })()`);
         if (!r) return [false, "IS/OOS Net row not found"];
+        // The Cum. net column is a running sum of the Net column beside it, so
+        // the last row must equal the run's net. Swapping net for gross without
+        // recomputing cum left it short by exactly the modelled costs.
+        await click("tab-trades-log");
+        const lastCum = await evaluate(`(() => {
+          const t = document.querySelector('[data-apollo-id="trades-log"]');
+          if (!t) return null;
+          const head = [...t.querySelectorAll('thead th')].map((h) => h.textContent.trim());
+          const col = head.findIndex((h) => /^cum\\. net$/i.test(h));
+          if (col < 0) return null;
+          const rows = [...t.querySelectorAll('tbody tr')];
+          const cell = rows[rows.length - 1]?.querySelectorAll('td')[col]?.textContent ?? '';
+          return Number(cell.replace(/\\u2212/g, '-').replace(/[^0-9.-]/g, ''));
+        })()`);
         await click("tab-performance");
         const panelNet = await evaluate(`(() => {
           const rows = [...document.querySelectorAll('dl > div')];
@@ -497,8 +511,13 @@ try {
           return d ? Number(d.querySelector('dd').textContent.replace(/\\u2212/g, '-').replace(/[^0-9.-]/g, '')) : NaN;
         })()`);
         const sum = r.is + r.oos;
-        const ok = Number.isFinite(panelNet) && Math.abs(sum - panelNet) < 0.05;
-        return [ok, `IS=${r.is} + OOS=${r.oos} = ${sum.toFixed(2)} vs Net Profit ${panelNet} → ${ok ? "reconciles" : "DISAGREE"}`];
+        const splitOk = Number.isFinite(panelNet) && Math.abs(sum - panelNet) < 0.05;
+        const cumOk = Number.isFinite(lastCum) && Math.abs(lastCum - panelNet) < 0.05;
+        return [
+          splitOk && cumOk,
+          `IS=${r.is} + OOS=${r.oos} = ${sum.toFixed(2)} vs Net Profit ${panelNet} → ${splitOk ? "reconciles" : "DISAGREE"}` +
+            ` | last Cum. net=${lastCum} → ${cumOk ? "matches" : "DISAGREE"}`,
+        ];
       },
     },
     {
