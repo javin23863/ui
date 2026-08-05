@@ -1,6 +1,8 @@
 # ui — hot state
 
 Live source of truth for this repo. The next session reads this first.
+**New here? Read [`docs/HANDOFF.md`](HANDOFF.md) — it links every document and names the
+traps that cost a day each.**
 **Delete what stops being true. A finished item still marked `▶` is a lie.**
 
 **This file carries no line counts, shas, or revision numbers.** An earlier version did, and they

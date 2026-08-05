@@ -17,7 +17,11 @@ Operator, 2026-08-05, verbatim intents:
 
 1. Users should be able to **save good strategies** — "not junk and waste" — with history.
 2. **Apollo's orb must be movable** so it cannot cover something the user needs.
-3. **How do we handle indicator types, and the representation of TradingView and MetaTrader?**
+3. **How do we handle indicator types, and strategies for TradingView and MetaTrader?**
+   Clarified by the operator 2026-08-05: this is about **the script languages a strategy is
+   delivered in**, not about embedding anyone's platform. The code pane today renders **Pine
+   only**. Traders use TradingView (Pine) *and* MetaTrader 5 (MQL5), so a strategy that exists in
+   one language is unusable to half the audience.
 4. **What is the Screeners tab actually screening?** Proposal: the edgeful model — the historical
    statistical probability of *this setup, for this indicator, on this asset, at this moment, in
    this part of the chart* — combined with what we already use that works with our own data.
@@ -114,33 +118,59 @@ no independent-unit rule.
 
 ---
 
-## §17. Indicators, and representing TradingView / MetaTrader
+## §17. Strategy languages, and indicator families
 
-Three separate questions that get conflated:
+**Operator clarification 2026-08-05:** the TradingView / MetaTrader question is about **the
+language a strategy ships in**. The code pane renders **Pine only** right now (`pineSource`,
+one buffer, one syntax). Traders use TradingView (**Pine**) and MetaTrader 5 (**MQL5**). A strategy
+that exists only in Pine is unusable to every MT5 trader, which is half the point of having a code
+pane at all.
 
-**17a. Indicator families we render ourselves.** Overlay (EMA, VWAP, bands), pane (RSI, MACD),
-level (prior-day high/low, IB, opening range), and zone (gaps, value area). Each needs a defined
-render form and a defined *refusal* — an indicator with insufficient lookback must draw nothing and
-say why, not draw a truncated line that looks like a signal.
+### 17a. The code pane becomes multi-language
 
-**17b. We do not embed their platforms.** No TradingView iframe or widget in the cockpit. Reasons,
-in order: their terms govern embedding and attribution; an embedded chart is not ours to instrument
-for Apollo (§13 requires `data-apollo-series`, which we cannot attach inside their frame); and a
-third-party frame in a trading surface is an availability dependency we do not control.
-**Existing standing note:** live TradingView captures must come from the operator's own logged-in
-session — that is a capture workflow, not a product surface.
+- A **language selector** on the code pane: `Pine v6` · `MQL5`. Extensible — the selector is a list,
+  not two hardcoded buttons.
+- Each language is a **first-class buffer with its own syntax highlighting**, not a re-labelled
+  copy of the same text. `prism-react-renderer` already backs the pane; MQL5 highlights adequately
+  as C-like, and that substitution must be recorded rather than silently relied upon.
+- `Copy` and `Run` act on the **selected** language. The existing `Copy` copies `pineSource`
+  unconditionally — the moment a second language exists that becomes the label-without-its-data
+  defect this build has already bought six times. **The button copies what the pane is showing.**
 
-**17c. What "representation" then means.** Two legitimate forms, both ours to build:
-- **Import** — read a strategy or indicator definition (Pine, MQL) and render *our* chart from it.
-  The Pine pane already exists as a display surface.
-- **Export/handoff** — emit a definition the user can run on their platform, and be explicit that
-  results will differ because the data and fill model differ. **A number we produce must never be
-  presented as what their platform would produce.**
+### 17b. A translation is a translation, and must say so
 
-MetaTrader specifically already has an adapter lane outside this repo; the UI question is only how
-a run *sourced* from it is labelled, so a user can never mistake which engine produced a number.
+This is the honesty rule for the whole surface. When a strategy is shown in a language it was not
+authored in:
 
----
+- Label which language is **canonical** (the one the run was executed from) and which is
+  **derived**.
+- **Never show backtest numbers beside a derived language as if they were produced by it.** The
+  numbers belong to the canonical run. A trader who pastes derived MQL5 into MT5 and gets different
+  results has been misled by our layout, not by their broker.
+- Where a construct has no faithful equivalent, the pane says so **at the line** rather than
+  emitting code that looks right and behaves differently. Silent approximation in a strategy
+  language is the worst failure mode available here.
+
+**Out of scope for this increment:** actually *compiling* or *executing* either language, and any
+automated Pine→MQL5 transpiler. Capabilities remain out of scope (§0). The UI work is the selector,
+the per-language buffers, the canonical/derived labelling, and the refusals.
+
+### 17c. Indicator families we render ourselves
+
+Overlay (EMA, VWAP, bands), pane (RSI, MACD), level (prior-day high/low, IB, opening range), and
+zone (gaps, value area). Each needs a defined render form **and a defined refusal** — an indicator
+with insufficient lookback must draw nothing and say why, not draw a truncated line that looks like
+a signal.
+
+### 17d. We do not embed their platforms
+
+Separate from the language question, and still true: no TradingView iframe or widget in the
+cockpit. Their frame cannot carry the `data-apollo-series` hooks §13 requires, and a third-party
+frame is an availability dependency we do not control. Live TradingView captures come from the
+operator's own logged-in session — a capture workflow, not a product surface.
+
+MetaTrader has an adapter lane outside this repo; the UI question is only that a run **sourced**
+from it is labelled with its engine, so a user can never mistake which engine produced a number.
 
 ## Sequencing
 
