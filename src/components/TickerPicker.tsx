@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Check, Search } from "lucide-react";
-import { cx } from "../ui";
+import { cx, useDismiss } from "../ui";
 
 const CATS = ["Stocks", "ETFs", "Crypto", "Forex", "Commodities"] as const;
 
@@ -46,16 +46,8 @@ export default function TickerPicker({
   const [q, setQ] = useState("");
   const box = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const h = (e: MouseEvent) => !box.current?.contains(e.target as Node) && onClose();
-    const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("mousedown", h);
-    window.addEventListener("keydown", k);
-    return () => {
-      document.removeEventListener("mousedown", h);
-      window.removeEventListener("keydown", k);
-    };
-  }, [onClose]);
+  // This component only mounts while open, so `open` is always true here.
+  useDismiss(box, true, onClose);
 
   const rows = BOOK[cat].filter(
     (r) => r.sym.toLowerCase().includes(q.toLowerCase()) || r.name.toLowerCase().includes(q.toLowerCase()),

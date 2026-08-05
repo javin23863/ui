@@ -3,7 +3,7 @@
 **Status:** built. This document stays the *specification* — it says what the UI must be, not what
 the code currently does. Live build state is `docs/hot.md`; where the two disagree, this file is
 the target and the build is the defect.
-**Scope:** visual + interaction-shape parity with the reference, **plus four deliberate
+**Scope:** visual + interaction-shape parity with the reference, **plus seven deliberate
 divergences** (§0). **Capabilities explicitly out of scope** — no real LLM, no Pine compilation, no
 live market data, no real backtest engine. Everything renders from fixtures.
 **Written:** 2026-08-05 · **v2:** the two tabs become ours + voice input · **v3:** our own
@@ -25,6 +25,7 @@ as defects and no one later "corrects" them back toward LuxAlgo.
 | §8d | **`Trades Log` tab is ours** — 17-column auditable ledger, `Gross`/`Costs`/`Net` split out, `IS`/`OOS` per trade, cross-link to chart | Same. |
 | §0e | **Apollo presence orb** — a small draggable sphere, always on screen, pulsing on its state table | Added retrospectively 2026-08-05. It shipped in P4 with **no plan item**: it is not a reference element, and §13 explicitly defers where Apollo's presence lives. Recording it as a divergence rather than deleting it, on the operator's ruling that Apollo is "an ever-presence". |
 | §0f | **A sixth rail entry** — the rail carries `New chat · Indicators · Screener · Conditional Rates · History`, where §3 observed **five** | Declared **before** shipping, 2026-08-05. §18 splits one surface into two: the statistics panel keeps the evidence and is renamed `Conditional Rates`, and `Screener` becomes an actionable page. Both need their own entry. The icon *count* in §3 is an observed reference fact, unlike the labels, which §12 gap 3 records as inferred — so adding one is a real divergence and not a reading correction. |
+| §0g | **A third control in the code-pane header** — a language selector beside `Copy` / `Run`, where §7 observed **two** | Declared **before** shipping, 2026-08-05. §7 records the header from `03-code-view.png` as `⧉ Copy` / `▷ Run` — an observed count, the same kind of fact as §0f's five icons, so adding to it is a real divergence and not a reading correction. §17a requires the selector: a pane that renders one language silently is unusable to every trader not on that platform, and a `Copy` wired to one buffer while the pane can show three is this build's most-repeated defect. It moves the code-pane parity sheet, which is the point of recording it here. |
 
 **§0e is a correction, not a decision made in advance.** The orb was built and merged before anyone
 wrote it down, which is exactly the drift this table exists to prevent — a divergence nobody
@@ -469,6 +470,8 @@ Per trade:
 ## 7. Code pane (`03-code-view.png`)
 
 - Header switches to `⧉ Copy` / `▷ Run`
+- **We ship three controls**, not two — see §0g. The reference's two are the observed set; our
+  third is the §17a language selector, without which the pane speaks only to TradingView traders.
 - Line-number gutter, right-aligned, 12px `--text-muted`, ~44px wide, no separator rule
 - Line 1 (the license comment) is rendered with a full-width **selected-line highlight** band
   — a subtle `--bg-elevated` — because it is the current line; that band follows the caret

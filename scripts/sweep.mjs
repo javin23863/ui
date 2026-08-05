@@ -167,6 +167,45 @@ try {
   const screenerText = () =>
     evaluate(`document.querySelector('[data-apollo-id="screener"]')?.innerText ?? ''`);
 
+  /** Open the §17a code pane, optionally on a given language. */
+  const codePane = async (langId = null) => {
+    await load();
+    await click("view-code");
+    if (langId) {
+      await click("code-language");
+      await click(`code-language-${langId}`);
+    }
+  };
+  const paneText = () =>
+    evaluate(`document.querySelector('[data-apollo-id="code-editor"]')?.textContent ?? ''`);
+  const provenanceText = () =>
+    evaluate(`document.querySelector('[data-apollo-id="code-provenance"]')?.innerText ?? ''`);
+  /**
+   * Capture what `Copy` actually writes.
+   *
+   * `navigator.clipboard` is a readonly accessor, so it is replaced by
+   * definition rather than assignment — and the component's own
+   * `navigator.clipboard?.writeText` guard is satisfied by the stub, so this
+   * exercises the real success path rather than the failure branch.
+   */
+  const copiedText = async () => {
+    await evaluate(`(() => {
+      window.__copied = null;
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (t) => { window.__copied = t; } },
+      });
+      return true;
+    })()`);
+    await click("copy-code");
+    return evaluate("window.__copied");
+  };
+  /** Lines the pane marked as having no faithful equivalent (§17b). */
+  const refusedLines = () =>
+    evaluate(
+      `[...document.querySelectorAll('[data-apollo-id="code-no-equivalent"]')].map((el) => el.textContent.replace(/^\\s*\\d+\\s*/, '').trim())`,
+    );
+
   const DATA_ROWS = [
     {
       // §11 declares TWO behaviours for this one input: the cost-sensitivity
@@ -1009,6 +1048,308 @@ try {
         ];
       },
     },
+
+    // ------------------------------------------------- §17a/§17b code pane
+
+    {
+      // THE row for this increment. `Copy` read `pineSource` unconditionally,
+      // which was correct while one language existed and became the
+      // label-without-its-data defect the moment a second did. Asserted on
+      // MQL5 specifically: on Pine it passes whether or not the fix is real.
+      row: "copy copies what is shown",
+      setup: () => codePane("mql5"),
+      check: async () => {
+        const copied = (await copiedText()) ?? "";
+        const shown = await paneText();
+        const isMql5 = copied.includes("#property copyright") && copied.includes("CTrade trade;");
+        const notPine = !copied.includes("strategy.entry");
+        // And what came back is the very text on screen, not merely some
+        // other MQL5 — a Copy wired to the wrong buffer of the right language
+        // would still pass the two tests above.
+        const sameAsPane = copied.trim().length > 0 && shown.includes(copied.trim().split("\n")[0]);
+        return [
+          isMql5 && notPine && sameAsPane,
+          `copiedChars=${copied.length} looksMql5=${isMql5} carriesNoPine=${notPine} matchesPane=${sameAsPane}`,
+        ];
+      },
+    },
+    {
+      // Each language is a first-class BUFFER, not a re-labelled copy of the
+      // same text (§17a). Checked on the third language, and by exclusion:
+      // asserting only that thinkScript is present would pass on a pane that
+      // renders every language at once.
+      row: "each language is its own buffer",
+      setup: () => codePane("thinkscript"),
+      check: async () => {
+        const shown = await paneText();
+        const isThinkScript = shown.includes("AddOrder(OrderType.BUY_TO_OPEN") && shown.includes("plot EmaTrend");
+        const noPine = !shown.includes("strategy.entry");
+        const noMql5 = !shown.includes("CTrade trade;");
+        return [
+          isThinkScript && noPine && noMql5,
+          `thinkScript=${isThinkScript} pineAbsent=${noPine} mql5Absent=${noMql5}`,
+        ];
+      },
+    },
+    {
+      // §17b's POSITIVE rule. Two OPPOSED states, because the §18 empty-state
+      // lesson applies exactly here: a single assertion that the derived case
+      // says "derived" still passes on a pane that says "derived" always.
+      row: "canonical and derived differ",
+      setup: () => codePane(),
+      check: async () => {
+        const pine = await provenanceText();
+        await click("code-language");
+        await click("code-language-mql5");
+        const mql5 = await provenanceText();
+        const pineOk = /canonical/i.test(pine) && !/derived translation/i.test(pine);
+        // The derived side must name the language the numbers DID come from,
+        // not merely disclaim itself.
+        const mql5Ok = /derived translation/i.test(mql5) && /Pine v6/.test(mql5) && /never executed/i.test(mql5);
+        return [pineOk && mql5Ok && pine !== mql5, `pineSaysCanonical=${pineOk} mql5SaysDerived=${mql5Ok} differ=${pine !== mql5}`];
+      },
+    },
+    {
+      // Run switches to a chart showing the CANONICAL run, so leaving it live
+      // under a translation is the layout claiming that translation produced
+      // what appears next. Both states again — a permanently disabled Run
+      // would pass a one-sided check.
+      row: "run refuses a derived language",
+      setup: () => codePane(),
+      check: async () => {
+        const enabled = () => evaluate(`!document.querySelector('[data-apollo-id="run-code"]')?.disabled`);
+        // §17a is "disabled AND STATES WHY" — two clauses. Only the first was
+        // asserted, so deleting the reason sentence left the sweep green. A
+        // control that greys out with no reason is a dead button, not a
+        // refusal. Two-sided for the same purpose as the enabled check: the
+        // canonical must NOT carry a reason, so a sentence hardcoded to render
+        // always fails here too.
+        const saysWhy = async () => /unavailable here/i.test((await provenanceText()) ?? "");
+        const onPine = await enabled();
+        const pineWhy = await saysWhy();
+        await click("code-language");
+        await click("code-language-mql5");
+        const onMql5 = await enabled();
+        const mql5Why = await saysWhy();
+        await click("code-language");
+        await click("code-language-thinkscript");
+        const onThink = await enabled();
+        const thinkWhy = await saysWhy();
+        const ok = onPine && !pineWhy && !onMql5 && mql5Why && !onThink && thinkWhy;
+        return [
+          ok,
+          `pineEnabled=${onPine} mql5Enabled=${onMql5} thinkScriptEnabled=${onThink} | statesWhy pine=${pineWhy} mql5=${mql5Why} thinkScript=${thinkWhy}`,
+        ];
+      },
+    },
+    {
+      // §17b requires the refusal AT THE LINE, and it has to be reachable —
+      // a refusal nobody can reach is a claim, not a gate. Also ties the
+      // rendered marker to the clipboard: the warning is only worth anything
+      // if it survives the paste that carries the code away from us.
+      row: "no-equivalent marked at the line",
+      setup: () => codePane("mql5"),
+      check: async () => {
+        const marked = await refusedLines();
+        const copied = (await copiedText()) ?? "";
+        const inClipboard = marked.length > 0 && marked.every((line) => copied.includes(line));
+        // Greptile round 2 found the bracket divergence in thinkScript, which
+        // this row was blind to: it asserted MQL5 and Pine and left the third
+        // buffer's refusals unchecked. A count alone would not have caught it
+        // either — thinkScript already marked its orders and its exits — so the
+        // specific construct is named. Pine assigns stop and target only while
+        // flat; a study has no position size to gate on, so a later signal
+        // replaces an open bracket, and that must be marked AT the recurrences.
+        await click("code-language");
+        await click("code-language-thinkscript");
+        const think = await refusedLines();
+        const thinkCopied = (await copiedText()) ?? "";
+        const thinkSurvives = think.length > 0 && think.every((line) => thinkCopied.includes(line));
+        const bracketMarked = think.some((line) => /flat-entry block/i.test(line));
+        // Canonical Pine is nobody's translation, so it must carry none.
+        await click("code-language");
+        await click("code-language-pine");
+        const onPine = await refusedLines();
+        return [
+          marked.length > 0 && inClipboard && thinkSurvives && bracketMarked && onPine.length === 0,
+          `mql5MarkedLines=${marked.length} allSurviveCopy=${inClipboard} thinkScriptMarkedLines=${think.length} thinkSurvivesCopy=${thinkSurvives} bracketMarked=${bracketMarked} pineMarkedLines=${onPine.length}`,
+        ];
+      },
+    },
+    {
+      // Greptile P1, round 1. The finding named the NEW selector, but the
+      // timeframe dropdown in the same header had the identical defect and
+      // TickerPicker held the only correct copy — so this is a CLASS, and the
+      // row proves the class rather than the instance that was reported. An
+      // overlay that cannot be dismissed is a trap on a trading surface,
+      // because the thing it covers is the chart.
+      row: "dropdowns dismiss",
+      setup: () => codePane(),
+      check: async () => {
+        const langOpen = () => evaluate(`!!document.querySelector('[data-apollo-id="code-language-mql5"]')`);
+        const tfOpen = () => evaluate(`!!document.querySelector('[data-apollo-id="tf-1h"]')`);
+        const pickerOpen = () => evaluate(`!!document.querySelector('[data-apollo-id="ticker-picker"]')`);
+        const escape = async () => {
+          await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
+          await wait(300);
+        };
+        const clickOutside = async () => {
+          await evaluate(`document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))`);
+          await wait(300);
+        };
+
+        // Each sub-check must start CLOSED. Without this the Escape leg
+        // leaves the menu open when dismissal is broken, the next trigger
+        // click toggles it shut, and the outside-click leg reads a pass it
+        // did not earn — the mutation run is what surfaced that.
+        // Takes the control as an argument because the timeframe leg had the
+        // identical shape and was left unguarded when only the language leg
+        // was hardened: neutering `useDismiss` printed `timeframe reopened=false
+        // afterOutside=false`, an outside-click leg passing on a menu that was
+        // already shut. Same defect as the one this helper was written for, one
+        // leg over — so it is a parameter, not a second copy.
+        const ensureClosed = async (trigger, isOpen) => {
+          if (await isOpen()) await click(trigger);
+        };
+
+        await click("code-language");
+        const langShown = await langOpen();
+        await escape();
+        const langAfterEsc = await langOpen();
+
+        await ensureClosed("code-language", langOpen);
+        await click("code-language");
+        const langReopened = await langOpen();
+        await clickOutside();
+        const langAfterOutside = await langOpen();
+
+        // Leaving the code view must close the menu too — an overlay that
+        // survives a view change hangs over a surface that no longer owns it.
+        // Read it back ON THE CODE VIEW. The language control renders only
+        // under `view === "code"`, so querying its items from the chart view
+        // returns false because the control unmounted, whether or not the state
+        // was ever cleared — asserting there is an assertion that cannot fail,
+        // and deleting the effect entirely still printed afterViewChange=false.
+        // The defect is a menu still open when its view COMES BACK, which is
+        // the moment this now looks at.
+        await ensureClosed("code-language", langOpen);
+        await click("code-language");
+        const langBeforeView = await langOpen();
+        await click("view-chart");
+        await click("view-code");
+        const langAfterView = await langOpen();
+
+        // The sibling control that never had dismissal at all. It renders only
+        // on the chart view, so go back there for it and the picker.
+        await click("view-chart");
+        await click("timeframe");
+        const tfShown = await tfOpen();
+        await escape();
+        const tfAfterEsc = await tfOpen();
+        await ensureClosed("timeframe", tfOpen);
+        await click("timeframe");
+        const tfReopened = await tfOpen();
+        await clickOutside();
+        const tfAfterOutside = await tfOpen();
+
+        // The third consumer of useDismiss. It already had a correct inline
+        // copy and was deduplicated into the shared hook — which is exactly
+        // the change that can silently un-fix a control nobody re-checks.
+        await click("symbol-picker");
+        const pickerShown = await pickerOpen();
+        await escape();
+        const pickerAfterEsc = await pickerOpen();
+
+        const ok =
+          langShown &&
+          !langAfterEsc &&
+          langReopened &&
+          !langAfterOutside &&
+          langBeforeView &&
+          !langAfterView &&
+          tfShown &&
+          !tfAfterEsc &&
+          tfReopened &&
+          !tfAfterOutside &&
+          pickerShown &&
+          !pickerAfterEsc;
+        return [
+          ok,
+          `lang open=${langShown} afterEsc=${langAfterEsc} reopened=${langReopened} afterOutside=${langAfterOutside} afterViewChange=${langAfterView} | timeframe open=${tfShown} afterEsc=${tfAfterEsc} reopened=${tfReopened} afterOutside=${tfAfterOutside} | picker open=${pickerShown} afterEsc=${pickerAfterEsc}`,
+        ];
+      },
+    },
+    {
+      // §17b's central prohibition: never show backtest numbers beside a
+      // derived language as if it produced them. It held only because the code
+      // view happens to render none — true, and unwatched, which is what
+      // "prose gates do not run" is about. This is the assertion that trips if
+      // anyone puts a KPI strip or a summary dock on this view.
+      row: "no run numbers beside derived",
+      setup: () => codePane("mql5"),
+      check: async () => {
+        const r = await evaluate(`(() => {
+          // Deliberately DOCUMENT-wide, not pane-scoped. §17b's prohibition is
+          // that no run figure shares the screen with a derived language, so a
+          // KPI strip anywhere while MQL5 is shown is the defect — narrowing
+          // this to the pane would let one render just outside it and pass.
+          // (An earlier draft queried a 'workspace' id that never existed and
+          // fell through to document.body, so it read as scoped and was not.)
+          // NOTE: this comment lives INSIDE a template literal — no backticks.
+          const numeric = [...document.querySelectorAll('[data-apollo-id]')]
+            .map((el) => el.getAttribute('data-apollo-id'))
+            .filter((a) => /^(kpi-|equity-|summary-|backtest-)/.test(a));
+          const provenance = document.querySelector('[data-apollo-id="code-provenance"]');
+          // A percentage or a signed currency figure anywhere in the code view
+          // that is NOT part of the provenance copy.
+          const pane2 = document.querySelector('[data-apollo-id="code-editor"]')?.parentElement;
+          const text = (pane2?.innerText ?? '').replace(provenance?.innerText ?? '', '');
+          const figures = text.match(/[+-]?\\$[\\d,]+(\\.\\d+)?|\\b\\d+(\\.\\d+)?%/g) ?? [];
+          return { numeric, figures: figures.slice(0, 5), figureCount: figures.length };
+        })()`);
+        const ok = r.numeric.length === 0 && r.figureCount === 0;
+        return [ok, `runNumberSurfaces=${r.numeric.length} figuresInPane=${r.figureCount}${r.figures.length ? ` e.g. ${r.figures.join(",")}` : ""}`];
+      },
+    },
+    {
+      // The library card is the ONE surface where saved source and that run's
+      // own numbers sit together, so it is where a derived translation could
+      // end up beside figures it did not produce (§17b). The pane is left on
+      // MQL5 *before* the save — a save that captured the selection would show
+      // MQL5 here and this row is what makes that visible.
+      row: "a save captures the canonical",
+      setup: async () => {
+        await load();
+        await click("view-code");
+        await click("code-language");
+        await click("code-language-mql5");
+        await click("view-chart");
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("favourite-run");
+        await click("rail-history");
+      },
+      check: async () => {
+        // The card for THE RUN JUST SAVED, not merely the first card in the
+        // library. Taking the first one read a SEEDED card instead, and this
+        // row passed with the save deliberately broken — an assertion that
+        // could not fail on the defect it names. The seed excludes the loaded
+        // run by design, so its strategy name identifies the new save.
+        const r = await evaluate(`(() => {
+          const card = [...document.querySelectorAll('[data-apollo-id^="library-card-"]')]
+            .find((c) => /Sweep and Engulf/i.test(c.innerText));
+          if (!card) return null;
+          const el = card.querySelector('[data-apollo-id^="library-source-language-"]');
+          if (!el) return { label: null };
+          const src = card.querySelector('details pre')?.textContent ?? '';
+          return { label: el.innerText.trim(), pine: src.includes('strategy.entry'), mql5: src.includes('CTrade trade;') };
+        })()`);
+        if (!r) return [false, "the run just saved has no card in the library"];
+        if (!r.label) return [false, "the saved card carried no source-language label"];
+        const ok = /Pine v6/.test(r.label) && r.pine && !r.mql5;
+        return [ok, `label="${r.label}" savedSourceIsPine=${r.pine} savedSourceIsMql5=${r.mql5}`];
+      },
+    },
   ];
 
   for (const r of DATA_ROWS) {
@@ -1096,7 +1437,11 @@ try {
     for (const f of failed) console.error(`  - ${f.row}: ${f.detail}`);
   }
   process.exitCode = failed.length ? 1 : 0;
-  console.log("empty-state sweep: PASS — every row said no");
+  // This line is the LAST thing the gate says, so it is the line a human or a
+  // CI summary reads. It printed "PASS" unconditionally until 2026-08-05 — a
+  // mutated run emitted the FAILED block and then closed with PASS, which is a
+  // sentence that could not say otherwise and therefore carried no information.
+  console.log(failed.length ? "empty-state sweep: FAIL" : "empty-state sweep: PASS — every row said no");
 
 } finally {
   // `process.exit()` here would skip this block entirely — it terminates

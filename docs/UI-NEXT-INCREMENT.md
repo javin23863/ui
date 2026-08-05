@@ -175,6 +175,29 @@ pane at all.
   unconditionally — the moment a second language exists that becomes the label-without-its-data
   defect this build has already bought six times. **The button copies what the pane is showing.**
 
+> **Amendment, 2026-08-05 — a third language, `thinkScript`.** The section above names two.
+> Operator direction the same day was that a concept must be representable on *"TradingView,
+> MetaTrader, or TD Ameritrade"*; TD Ameritrade's platform is thinkorswim and its language is
+> thinkScript. Recorded here **before** the code, because "extensible" is an instruction about the
+> data structure and not a licence to populate a third entry — the difference §0f exists to keep
+> visible. thinkorswim also carries every asset class, where MetaTrader in practice carries FX,
+> metals and some indices, so it is the entry that makes the selector cover the stock and futures
+> traders this cockpit is built for.
+>
+> **The highlighting substitution, recorded per language, and they are not equally strong claims.**
+> MQL5-as-C-like is a *good* substitution: MQL5 is genuinely C++-derived, so its keywords, comment
+> forms, string literals and numeric forms land where the highlighter expects them.
+> thinkScript-as-C-like is a *weaker* one and must not be recorded as if it were the same: thinkScript
+> is not C-derived, its `plot`/`def`/`input` declarations are not C keywords, and its `{ }` option
+> lists are not blocks. Comments, strings and numbers highlight correctly; declaration keywords do
+> not. That ceiling is the reason the substitution is written down rather than assumed.
+>
+> **`Run` on a derived buffer refuses.** `Run` here applies the script to the chart — it compiles
+> nothing (§0 capabilities). The chart it switches to shows the *canonical* run. Leaving `Run` live
+> under a derived language would be the layout claiming the derived source produced what appears
+> next, which is exactly what 17b prohibits, so on a derived language `Run` is disabled and states
+> why. This is the sharpest place on the surface to imply a compile that never happened.
+
 ### 17b. A translation is a translation, and must say so
 
 This is the honesty rule for the whole surface. When a strategy is shown in a language it was not
@@ -189,6 +212,28 @@ authored in:
   emitting code that looks right and behaves differently. Silent approximation in a strategy
   language is the worst failure mode available here.
 
+> **Amendment 2026-08-05 — "rather than" carries two acts, and the marker does both.** The sentence
+> above reads as *marker instead of code*, which is right only when the construct is **absent** in
+> the target language. MQL5's three markers are that case: no constrained option lists, no implicit
+> position size, an EA cannot plot — there is nothing to emit, so the marker stands in its place.
+> The thinkScript bracket is the other case, and this increment is what decided it. The construct is
+> **present** — `rec longStop` and `rec longTarget` are emitted and are correct on the entry bar —
+> but Pine's guard around it is unwritable, because Pine assigns those floats only inside its
+> flat-entry block (`strategy.position_size == 0`) and a study cannot read its own position size. So
+> a second qualifying signal replaces an open position's stop and target. There the marker sits
+> **beside** the emitted code and names the consequence at the line.
+>
+> The ruling: a marker replaces code where the construct is absent, and annotates code where the
+> construct is present but its guard is not. **Do not read "rather than" as licence to delete an
+> emitted-and-marked construct** — deleting the thinkScript bracket would leave a translation with no
+> exits at all, which is a worse lie than one with a documented divergence.
+>
+> Why not simply write the guard: a study-side position state machine reconstructed from this
+> script's own entries and exits is a *reimplementation of broker state*, not a translation of what
+> Pine's source says, and this increment cannot compile or execute either language (below) — so it
+> would ship as an unvalidated approximation, which is the exact failure mode the clause above names.
+> Greptile's round-2 P1 offered both options and this is the one taken, on the record.
+
 **Out of scope for this increment:** actually *compiling* or *executing* either language, and any
 automated Pine→MQL5 transpiler. Capabilities remain out of scope (§0). The UI work is the selector,
 the per-language buffers, the canonical/derived labelling, and the refusals.
@@ -200,6 +245,14 @@ zone (gaps, value area). Each needs a defined render form **and a defined refusa
 with insufficient lookback must draw nothing and say why, not draw a truncated line that looks like
 a signal.
 
+> **Deferred 2026-08-05, on its own card `consumer.ui-indicator-families`.** 17a/17b ship first as
+> `consumer.ui-indicator-representation`. The two are separable — the Sequencing note below already
+> describes them as different kinds of work — but the deferral is written down for the same reason
+> §17 itself was: an item deferred without a record becomes the item nobody mentions again. The card
+> was **split rather than partially satisfied**; moving a card titled *"language coverage and
+> indicator families"* to `verify` on the language clause alone is scope narrowing reported as
+> completion.
+
 ### 17d. We do not embed their platforms
 
 Separate from the language question, and still true: no TradingView iframe or widget in the
@@ -209,6 +262,19 @@ operator's own logged-in session — a capture workflow, not a product surface.
 
 MetaTrader has an adapter lane outside this repo; the UI question is only that a run **sourced**
 from it is labelled with its engine, so a user can never mistake which engine produced a number.
+
+> **The engine label, decided 2026-08-05.** This is a positive obligation, not just the embed
+> prohibition above, so it gets an answer rather than silence.
+>
+> - **Shipped now:** the canonical/derived label. Showing MQL5 source beside a run is precisely what
+>   makes *"which engine produced this number?"* askable, and this increment is what creates that
+>   risk. The label answers it on the surface that raises it — including on a Strategy Library card,
+>   where saved source and that run's own numbers sit together.
+> - **Deferred, with its reason:** a per-run `engine` field. There is exactly **one** engine in this
+>   build and it is the fixture, already declared in §0 and stated on every panel that renders a
+>   number. A field that can only ever hold one value resolves no ambiguity and adds a third place
+>   to say the same thing. It becomes real when a second engine exists — the MetaTrader adapter
+>   lane. Recorded on `consumer.ui-indicator-families` so it is not lost.
 
 ## §18. The screening surface is two surfaces
 
@@ -269,6 +335,13 @@ become the item nobody mentioned again.
 2. **§16 Screeners** — largest. Needs the Atlas contract rendered honestly. Build the refusal states
    *first*; they are the gate.
 3. **§17 Indicators** — 17a is UI work; 17b is a decision to record; 17c is mostly labelling rules.
+
+**Amended again 2026-08-05.** §17 ships in two pieces, not one. **17a + 17b** — the language
+selector, the per-language buffers, the canonical/derived label and the at-the-line refusals — are
+`consumer.ui-indicator-representation`. **17c** — the four indicator families and their refusals —
+is deferred to `consumer.ui-indicator-families`, recorded above at §17c. §17d's engine label is
+answered in place: the canonical/derived half ships with 17b, the per-run engine field waits for a
+second engine to exist.
 
 **Gate for all three, same as §11:** each panel gets an empty-state sweep row before it ships, and
 `scripts/sweep.mjs` grows to cover it. A panel that renders a number for an input that cannot

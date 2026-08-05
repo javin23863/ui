@@ -12,6 +12,182 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
+## §17a/§17b The code pane becomes multi-language — MERGED TO MAIN 2026-08-05
+
+| | |
+|---|---|
+| PR #7 | `feat/code-pane-languages` → **MERGED**. CI `gates` SUCCESS at the merged head. **Rounds 1–2: three P1s, all real, all fixed. Round 3 (`041d1d3`): 5/5 clean. Round 4 (`8b06589`): 4/5, one P1 — `Previous Candle Direction` is a dead control in all four sources. Merged on an OPERATOR RULING with that finding open, carded as `defect.ui-dead-prevdir-input` at revision 7351.** The defect predates this PR, sits in the canonical fixture rather than in the translations, and its fix is a strategy decision — see below. **This is the one merge in this repo not authorized by a clean pass; it is authorized by the operator, and the distinction is the record.** |
+| Greptile | The `Greptile Review` *check* reads `fail` on a confidence threshold, not a verdict — read the body. Trap #2 in `HANDOFF.md` applies: a clean pass creates no review object and no inline comments, so poll the body's `Reviews (N)` line, never the reviews endpoint. **This repo's regime is that delegation, not the futures adversarial-review rubric — a 5/5 is a pass, not a grade.** A pass authorizes only if its summary describes THIS diff (`feedback_greploop_merge_authorization`: a 5/5 that reviewed another PR is void); round 3's did. |
+| Spec | `docs/UI-NEXT-INCREMENT.md` §17a/§17b, amendments recorded **in a commit of their own, before any code** |
+| Cards | `consumer.ui-indicator-representation` — **verify**, now 17a/17b only; §17c **and §17d's per-run engine field** split out to `consumer.ui-indicator-families` (inbox), where the engine deferral is acceptance row 6 — stated once on the card, with the `notes` field pointing to it rather than restating it. §17d in `UI-NEXT-INCREMENT.md` keeps the plan-side record; that is not duplication and must not be deleted as such. |
+| plan-warden | passes 1–3 during the wave, six blocking, all applied; **pass 4 before merge: ON PLAN WITH CORRECTIONS, four blocking, all documentation — the §17b amendment, this block's merge state, the round-3 receipt, and the flake card's scope. All applied.** |
+| Gates | sweep **49/49 — the wave delta is 41 → 49**, eight rows added and none removed; reflow PASS at 1440 + 1280, palette 20/20, `tsc -b` clean, `build` clean, seven parity sheets regenerated |
+
+The pane rendered Pine and only Pine, so a strategy in this cockpit was unusable to every trader
+not on TradingView. It now carries **`Pine v6` · `MQL5` · `thinkScript`**, each a real hand-written
+buffer rather than one text under three labels.
+
+**The defect this closes, on its seventh appearance.** `Copy` read `pineSource` unconditionally and
+so did the pane. Correct while one language existed; the moment a second did, the button would have
+copied Pine while the screen showed MQL5. `src/languages.ts` is now the one answer to *"which
+language is the pane showing"*, and the header's `Copy`, the header's `Run`, the provenance label
+and the rendered buffer all read from it — the same shape as `presentedRowsFor` in §15.
+
+### What the warden stopped
+
+- **The selector is a §0 divergence, and I had not declared it.** §7 records the code-pane header
+  from `03-code-view.png` as `⧉ Copy` / `▷ Run` — an *observed count*, the same class of fact as
+  §0f's five rail icons. A third control is a real divergence. Declared as **§0g before shipping**.
+- **thinkScript is scope growth.** §17a named two languages. *"Extensible"* describes the data
+  structure; it does not authorise a third entry. Recorded as a dated amendment inside §17a naming
+  the operator direction it came from — and under *this* increment's card, not another card's title.
+- **The canonical/derived label is a positive requirement**, not something satisfied by the accident
+  that no numbers currently render on the code view. Building only the prohibition leaves the honest
+  case unrendered.
+- **The card was split, not partially satisfied.** Moving a card titled *"language coverage **and
+  indicator families**"* to `verify` on the language clause alone is scope narrowing reported as
+  completion.
+- **§17d hides a positive obligation** behind its no-embed rule: a run must be labelled with its
+  engine. Answered rather than skipped — the canonical/derived half ships now; a per-run `engine`
+  field waits for a second engine to exist, since a field with one possible value resolves nothing.
+
+### Decisions worth keeping
+
+- **`Run` refuses on a derived language.** It switches to a chart showing the *canonical* run, so
+  leaving it live under a translation would be the layout claiming that translation produced what
+  appears next.
+- **The refusal marker lives INSIDE the source text**, as a native comment carrying
+  `NO FAITHFUL EQUIVALENT:`. One string, so the pane cannot mark a line the clipboard does not — and
+  the warning survives the paste, which is the exact moment it matters. Three in MQL5 (no option
+  lists, no implicit position size, an EA cannot plot), two in thinkScript (no readable position
+  size, `AddOrder` has no attached bracket). Zero in Pine, which is nobody's translation.
+- **The highlighting substitution is recorded per language, with its ceiling.** MQL5-as-C++ is a
+  good fit; thinkScript-as-C++ is a *weaker* one and is written down as weaker. You can see it: in
+  thinkScript, `default` inside an option list colours as a C++ keyword when it is not one.
+
+> **A mutation caught my own assertion being decorative — again.** `a save captures the canonical`
+> read the *first* card in the library, which is a SEEDED card. It passed with the save deliberately
+> broken. Scoped to the card for the run just saved, it fails on exactly the defect it names. **The
+> rule that keeps earning its keep: a row that has not been watched to fail is not a gate.**
+
+### What Greptile caught — round 1 at `69094f1`, 4/5, two P1s, both real
+
+- **P1-A — the thinkScript translation was a different strategy.** Pine holds `stopPrice` and
+  `targetPrice` in `var` floats set once at entry; mine recomputed them from each bar's close and
+  ATR, so the stop and target walked along with price and the position **could never be stopped out
+  on a trend against it**. Latched with `rec` at the signal bar. This is precisely what §17b exists
+  to prevent, and I shipped one — a translation that reads right and trades differently.
+- **P1-B — the language listbox could not be dismissed, and it was a CLASS.** Greptile named the new
+  control. But `TickerPicker` held the only correct copy of that logic and the **timeframe dropdown
+  in the same header had the identical defect**. Patching the reported instance would have left the
+  older sibling broken. Extracted `useDismiss` in `src/ui.tsx`; all three use it, and both header
+  menus close on view change. **plan-warden pass 3 caught the claim outrunning its proof:** the row
+  exercised the language selector on Escape *and* outside-click, the timeframe on Escape only, and
+  `TickerPicker` — the third consumer — not at all. A shared hook with one of three consumers checked
+  is how the next regression gets through, and `TickerPicker` was *already correct* before the dedup,
+  so it is exactly the control a silent un-fix would hit. All three legs now assert, plus the
+  view-change close.
+- **§17a says `Run` is "disabled **and states why**" — two clauses, one asserted.** The row read
+  `.disabled` and nothing else, so deleting the reason sentence left the sweep green. Also caught by
+  pass 3, and the same failure mode pass 2 caught: a clause that reads as covered because a sibling
+  clause is.
+
+### Round 2 at `55c2ddd` — one P1, and my round-1 fix was half a fix
+
+- **P1-C — latching the bracket was not the same as keeping it.** Round 1's `rec` stopped the levels
+  walking with price, and I called P1-A closed. It was not: `rec longStop` is conditioned on
+  `longSignal` alone, so a **second qualifying signal while the first position is still open replaces
+  that position's stop and target** — Greptile's deterministic run shows a long bracketed `90`/`115`
+  becoming `95`/`132.5`. Pine assigns those floats **only inside its flat-entry block**, gated on
+  `strategy.position_size == 0`. The class check says MQL5 is clean — `PositionSelect` at its
+  `OnTick` head is that guard, and its bracket is attached to the order — so this is thinkScript's
+  alone.
+- **Marked, not silently "fixed".** A study cannot read its own position size, so the flat gate
+  cannot be written the way Pine writes it. A study-side state machine could *approximate* it from
+  this script's own entries and exits, but that is a reimplementation of broker state that has never
+  been compiled or run — shipping it as a translation would be the §17b defect wearing the fix's
+  clothes. It carries `NO FAITHFUL EQUIVALENT:` at the recurrences instead, naming the exact
+  consequence, and the marker travels with the clipboard.
+- **The row that should have caught it was blind to a third of the pane.** `no-equivalent marked at
+  the line` asserted MQL5 and Pine and **never selected thinkScript**. Now asserts thinkScript's
+  markers survive `Copy` too, and names the construct — a bare count would still pass, because
+  thinkScript already marked its orders and its exits. Mutation: dropping the token from the bracket
+  note takes `thinkScriptMarkedLines` 3 → 2, `bracketMarked=false`, **48/49, exit 1**.
+
+> **The harness lied about its own result.** `sweep.mjs` printed
+> `empty-state sweep: PASS — every row said no` **unconditionally**, outside the `if (failed.length)`
+> branch. A mutated run emitted the `FAILED` block and then closed with `PASS` as its last line — so
+> anything reading tail-1 or stdout-only took a green from a red run. The exit code was always
+> honest; the sentence never could be. Now a ternary on the same `failed.length` that sets the exit
+> code. **A verdict that cannot say otherwise is not a verdict** — the same test the rows are held to,
+> finally applied to the thing that reports them.
+
+> **And the row's scope was decorative.** `no run numbers beside derived` queried
+> `[data-apollo-id="workspace"]`, an id that **has never existed in this codebase**, and fell through
+> to `document.body`. It read as pane-scoped and was not. Now an explicit document-wide scan, which
+> is the right scope anyway: §17b's prohibition is that no run figure shares the *screen* with a
+> derived language, so narrowing to the pane would let a KPI strip render just outside it and pass.
+
+> **A syntax error and a proven mutation are the same exit code.** The comment written to explain
+> that scope fix went *inside* a backtick template literal and itself contained backticks, which
+> closed the literal: `SyntaxError: missing ) after argument list`. The script still **exited 1**. A
+> mutation proof that checked only `$?` would have recorded the fix as proven while **zero rows
+> executed**. The durable rule, now in `HANDOFF.md` trap #5: read the `N/N` line and the final stdout
+> line, never the exit code alone. `node --check scripts/sweep.mjs` before and after any edit to a
+> row — the gate's own syntax is not covered by any gate.
+
+> **Round 4 at `8b06589` — `Previous Candle Direction` is a control that does nothing, in ALL FOUR
+> sources. Open at merge on an operator ruling; carded `defect.ui-dead-prevdir-input`, rev 7351.**
+> `prevDir` is declared at
+> `src/fixtures/market.ts:442` and referenced nowhere in the canonical Pine: `bullSweep` and
+> `bearSweep` never consult it, so `Any` and `Same Direction` produce identical eligibility. Verified
+> by reading the source, not taken from the review. My MQL5 (`InpPrevDir`) and thinkScript
+> (`prevDir`) buffers reproduce that input faithfully — and **faithfulness is §17b's bar**, so
+> deleting it from the translations while canonical Pine keeps it would make them *less* correct, not
+> more. The defect is upstream of the translations and predates this PR; what this PR did was
+> propagate one dead input into three.
+>
+> Two fixes, materially different, and **only one of them is mine to pick**:
+> *Delete the input* — behaviour-preserving, since it is already a no-op, but it removes a knob from
+> the strategy of record. *Implement the filter* — restores a real signal filter, changes which bars
+> qualify, and means the displayed canonical source would describe a strategy the run's 47 synthetic
+> trades never applied, which is the §17b sin pointed the other way. Which is right turns on a fact
+> only the operator holds: whether the real TradingView strategy implements this filter and our
+> fixture is an incomplete transcription, or whether the input was always vestigial. Asked, not
+> assumed — and the operator's answer on 2026-08-05 was to merge with it open, so the question is
+> still owed on the card. **Merging did not resolve it; it deferred it with a receipt.** Whoever
+> picks the card up asks that question first, because both fixes are wrong without it.
+>
+> This is the same defect class as the seven the build has already bought — **a label that moves
+> without its data** — in its eighth form: a control that renders, offers two values, and changes
+> nothing. `HANDOFF.md`'s house rule says every panel must be able to say no; an input that cannot
+> say anything at all is the weaker version of the same failure.
+
+> **The shared `click()` can pass a row on stale state — card `defect.ui-sweep-click-flake`, inbox.**
+> Surfaced as one flaky row (`11 trades → Thin sample chip`, failed on the first sweep after a source
+> edit forced a vite re-transform, passed on immediate re-run) but **it is not that row's defect**.
+> `scripts/sweep.mjs:98` is the primitive every row goes through: `click()` waits a fixed 850 ms
+> rather than for an expected state, so it loses under load, and it returns `'MISSING'` when the
+> element is absent — which every caller discards. `analysisUnder` discards it, and so does
+> `codePane()`, which selects a language through **two** unchecked clicks. So §17's own receipts —
+> `copy copies what is shown`, `each language is its own buffer`, `canonical and derived differ`,
+> `run refuses a derived language`, `no-equivalent marked at the line` — are consumers of the defect,
+> not bystanders to it.
+>
+> Most stale reads fail closed: a missed click leaves Pine, and the derived rows assert against Pine,
+> so they go red. The direction that can pass wrongly is **derived → derived** — a missed thinkScript
+> click while MQL5 is still shown. That is a live direction, not a theoretical one: it is exactly why
+> `no-equivalent marked at the line` names the bracket construct instead of counting markers, since a
+> count of 3 is true of both buffers.
+>
+> The fix is deferred, not the record. A drive-by harness change inside a feature PR is how scope
+> creep enters (`HANDOFF.md` house rules), and §17c's rule applies to the deferral itself: *an item
+> deferred without a record becomes the item nobody mentions again*. **This wave fixed `useDismiss` as
+> a class and very nearly filed its sibling as an instance in the same document** — the write-up above
+> named one row where the defect is one primitive with every row downstream of it.
+
+---
+
 ## §18 The screening surface is two surfaces — MERGED TO MAIN 2026-08-05
 
 | | |
