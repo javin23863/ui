@@ -73,9 +73,24 @@ export function warningsFor(f: RunFacts): Warning[] {
 
 export const rowsFor = (profile: Profile) => (profile === "thin" ? trades.slice(0, 11) : trades);
 
+export const costsModelledFor = (profile: Profile) => profile !== "no-costs";
+
+/**
+ * The rows a profile PRESENTS — slice and cost treatment together.
+ *
+ * Everything downstream reads this one call. Fixing the saved headline to be
+ * cost-free while `factsForProfile` still derived `top3Share` from the
+ * cost-deducted rows put a cost-free Net beside a Top-3 percentage computed
+ * against a different net — the same defect one level down from where it was
+ * just fixed. A number and the warning that qualifies it have to come from the
+ * same representation of the run, not merely from the same slice of it.
+ */
+export const presentedRowsFor = (profile: Profile) =>
+  asPresented(rowsFor(profile), costsModelledFor(profile));
+
 /** The live fixture's facts under a given run profile. */
 export function factsForProfile(profile: Profile): RunFacts {
-  const rows = rowsFor(profile);
+  const rows = presentedRowsFor(profile);
   const net = rows.reduce((s, t) => s + t.net, 0);
   const top3 = [...rows].sort((a, b) => b.net - a.net).slice(0, 3).reduce((s, t) => s + t.net, 0);
   const is = rows.filter((t) => t.sample === "IS").length;
@@ -85,7 +100,7 @@ export function factsForProfile(profile: Profile): RunFacts {
     trades: rows.length,
     perMonth: rows.length / (profile === "thin" ? THIN_MONTHS : FULL_MONTHS),
     top3Share: net > 0 ? (top3 / net) * 100 : 0,
-    costsModelled: profile !== "no-costs",
+    costsModelled: costsModelledFor(profile),
     holdout: !declared ? "undeclared" : is > 0 && oos > 0 ? "ok" : "declared-empty",
   };
 }
@@ -165,10 +180,11 @@ const day = (t: number) =>
  * comment on this function asserted the property it was breaking.
  */
 export function captureCurrentRun(profile: Profile, parentId: string | null = null): SavedRun {
-  const rows = rowsFor(profile);
   // As PRESENTED: a no-costs run reports net equal to gross, so the saved
-  // headline must be the one the panel showed, not the cost-deducted one.
-  const s = statsFor(asPresented(rows, profile !== "no-costs"));
+  // headline must be the one the panel showed, not the cost-deducted one — and
+  // the facts beside it come from the very same rows.
+  const rows = presentedRowsFor(profile);
+  const s = statsFor(rows);
   return {
     id: `run-${Date.now()}`,
     savedAt: Date.now(),

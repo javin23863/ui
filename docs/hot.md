@@ -21,7 +21,7 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Card | `consumer.ui-strategy-library` — **active** |
 | plan-warden | ON PLAN WITH CORRECTIONS, all four applied (see below) |
 | Gates | sweep **18/18**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
-| Greptile | rounds 1–2 found **three P1s, all real, all fixed** — see below |
+| Greptile | rounds 1–3 found **four P1s, all real, all fixed** — see below |
 
 Reachable from the rail's `History` button. Star in the backtest header saves the run **as shown**,
 so an entry's numbers and its adequacy chips come from the same profile the reader is looking at.
@@ -80,17 +80,34 @@ byte-identical, so no parity surface moved** — verified by regenerating all se
 the same net; mutating `Performance` back to ignoring the profile reproduces
 `log=+2,587.70 panel=+1999.70` exactly.
 
+**Round 3 found the same defect one level down, in the round-2 fix.** The saved headline was now
+cost-free (+2,587.70) but `factsForProfile` still derived `top3Share` from the cost-deducted rows,
+so the card paired that headline with `Top-3 carries 249% of net` — a percentage computed against a
+net that was no longer on the card. **A number and the warning that qualifies it have to come from
+the same representation of the run, not merely from the same slice of it.** `presentedRowsFor`
+(slice *and* cost treatment) is now the single call, and `factsForProfile` and `captureCurrentRun`
+both take their rows from it. Correct value is 194%.
+
+> **The first version of that gate could not fail, and the mutation is what proved it.** It compared
+> the panel's Top-3 against the card's Top-3 — but both read the same `factsForProfile`, so pointing
+> that function at the wrong rows moved them together and they agreed on 249% while agreeing with
+> nothing else on screen. The mutation passed, which is the only reason the hole was visible. The
+> row now **recomputes the Top-3 share from the rendered Trades Log** and requires the panel and the
+> card each to match the ledger, not each other: clean reads `ledger=194% panel=194% card=194%`,
+> mutated reads `ledger=194% panel=249% card=249%` and fails. **Two surfaces agreeing is not
+> evidence when one call feeds both.**
+
 > **Do not read "this profile is only a demo switch" as permission to leave it inconsistent.** The
 > profile switch is what makes every refusal in this build demonstrable. A run profile that two
 > panels disagree about is a broken instrument, and it stayed broken because nothing asserted
 > agreement BETWEEN panels — only that each panel said no on its own.
 
-Greptile ran all three in a browser and attached the recordings; **our own sweep had 15 green rows
+Greptile ran all four in a browser and attached the recordings; **our own sweep had 15 green rows
 and caught none of them**. Three rows added so none can come back — `save keeps its own profile numbers`,
-`another profile saves separately` and `no-costs net agrees everywhere` — each mutation-proven by
+`another profile saves separately` and `no-costs figures agree everywhere` — each mutation-proven by
 restoring the exact bug it guards.
 The lesson is narrow and worth keeping: **every row of the sweep asserted a refusal, and not one of
-the three defects was a refusal.** A panel that says no correctly can still put the wrong number on
+the four defects was a refusal.** A panel that says no correctly can still put the wrong number on
 the screen, and two panels can each be correct on their own while contradicting each other.
 
 **Proven by mutation 2026-08-05**, all five original rows at once: seed unconditionally → `cards=5`;

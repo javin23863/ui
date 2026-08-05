@@ -382,7 +382,7 @@ try {
       // clicks away said +1,999.70 for the same run — a disagreement of exactly
       // the costs the profile claimed were not modelled. All three surfaces that
       // state a net for this run must state the same one.
-      row: "no-costs net agrees everywhere",
+      row: "no-costs figures agree everywhere",
       setup: async () => {
         await load();
         await click("open-backtest");
@@ -391,6 +391,15 @@ try {
       },
       check: async () => {
         const money = (s) => (s ? Number(String(s).replace(/[^0-9.-]/g, "")) : NaN);
+        // The qualifier has to describe the SAME representation as the headline.
+        // A cost-free net beside a Top-3 percentage computed against the
+        // cost-deducted net is two different runs on one card.
+        const panelTop3 = await evaluate(`(() => {
+          const el = [...document.querySelectorAll('div')].find(
+            (d) => d.children.length === 2 && /^TOP-3 TRADE SHARE$/i.test(d.children[0]?.textContent?.trim() ?? ''),
+          );
+          return el ? el.children[1].textContent.trim() : null;
+        })()`);
         await click("tab-trades-log");
         const logNet = await evaluate(`(() => {
           const tf = document.querySelector('[data-apollo-id="trades-log"]')?.querySelector('tfoot');
@@ -400,6 +409,26 @@ try {
           const cells = [...tf.querySelectorAll('td,th')].map((c) => c.textContent.trim());
           const numeric = cells.filter((t) => /[0-9]/.test(t));
           return numeric.length ? numeric[numeric.length - 1] : null;
+        })()`);
+        // Recompute the Top-3 share from the LEDGER ON SCREEN rather than
+        // comparing two surfaces that both read the same function. Checking only
+        // panel-against-card cannot fail: pointing both at the wrong rows moves
+        // them together, and they agree on a figure that describes neither the
+        // net beside it nor the trades below it.
+        const expectedTop3 = await evaluate(`(() => {
+          const t = document.querySelector('[data-apollo-id="trades-log"]');
+          if (!t) return null;
+          const head = [...t.querySelectorAll('thead th')].map((h) => h.textContent.trim());
+          const col = head.findIndex((h) => /^net$/i.test(h));
+          if (col < 0) return null;
+          const nets = [...t.querySelectorAll('tbody tr')]
+            .map((tr) => tr.querySelectorAll('td')[col]?.textContent ?? '')
+            .map((s) => Number(s.replace(/\\u2212/g, '-').replace(/[^0-9.-]/g, '')))
+            .filter((n) => Number.isFinite(n));
+          if (!nets.length) return null;
+          const sum = nets.reduce((a, b) => a + b, 0);
+          const top3 = [...nets].sort((a, b) => b - a).slice(0, 3).reduce((a, b) => a + b, 0);
+          return sum > 0 ? (top3 / sum) * 100 : null;
         })()`);
         await click("tab-performance");
         const panelNet = await evaluate(`(() => {
@@ -415,9 +444,25 @@ try {
           const r = [...c.querySelectorAll('div')].find((d) => d.querySelector('dt')?.textContent.trim() === 'Net');
           return r ? r.querySelector('dd').textContent.trim() : null;
         })()`);
+        const cardTop3 = await evaluate(`(() => {
+          const c = [...document.querySelectorAll('[data-apollo-id^="library-card-"]')].find((x) => /Sweep and Engulf/.test(x.innerText));
+          const m = c && c.innerText.match(/Top-3 carries (\\d+)% of net/);
+          return m ? m[1] : null;
+        })()`);
         const [a, b, c] = [money(logNet), money(panelNet), money(cardNet)];
-        const agree = Number.isFinite(a) && Math.abs(a - b) < 0.01 && Math.abs(a - c) < 0.01;
-        return [agree, `log=${logNet} panel=${panelNet} savedCard=${cardNet} agree=${agree}`];
+        const netAgree = Number.isFinite(a) && Math.abs(a - b) < 0.01 && Math.abs(a - c) < 0.01;
+        const p3 = money(panelTop3);
+        const c3 = money(cardTop3);
+        // Each must match the ledger on screen, not merely each other.
+        const exp = Number.isFinite(expectedTop3) ? expectedTop3 : NaN;
+        const top3Agree =
+          Number.isFinite(exp) && Number.isFinite(p3) && Number.isFinite(c3) &&
+          Math.abs(p3 - exp) < 1.5 && Math.abs(c3 - exp) < 1.5;
+        return [
+          netAgree && top3Agree,
+          `net: log=${logNet} panel=${panelNet} card=${cardNet} agree=${netAgree}` +
+            ` | top3: ledger=${Number.isFinite(exp) ? exp.toFixed(0) : "?"}% panel=${panelTop3} card=${cardTop3}% agree=${top3Agree}`,
+        ];
       },
     },
     {
