@@ -27,6 +27,18 @@ Operator, 2026-08-05, verbatim intents:
    statistical probability of *this setup, for this indicator, on this asset, at this moment, in
    this part of the chart* — combined with what we already use that works with our own data.
 
+   > **Resolved in part, 2026-08-05.** §16 shipped the edgeful half. The second clause — "combined
+   > with what we already use that works with our own data" — has **no receipt yet** and §18's
+   > rename must not be read as closing it.
+
+5. **The screening surface is two surfaces.** Operator, 2026-08-05, verbatim: *"The screener tab,
+   rename it to something probability, statistical, however, not name it the evergreen tab, but
+   basically summarize the name for what we're trying to do with that actual screen itself, and
+   then create a new tab that's actually for screeners and how we can actually present to the user
+   in a practical, easy manner setups on the current asset class that they're looking at on the
+   screen with the different time frames with certain setups from the library in real time. Where
+   it's more like an actionable page."*
+
 **Item 2 is already built.** `ApolloOrb.tsx` drags on pointer events, clamps to the viewport, and
 suppresses the click when the pointer moved. Nothing to do unless the *feel* is wrong; that would
 be a tuning note, not a work item.
@@ -197,7 +209,57 @@ operator's own logged-in session — a capture workflow, not a product surface.
 MetaTrader has an adapter lane outside this repo; the UI question is only that a run **sourced**
 from it is labelled with its engine, so a user can never mistake which engine produced a number.
 
+## §18. The screening surface is two surfaces
+
+**Filed 2026-08-05 from operator intent 5.** §16 answered *"what usually happens after this
+setup?"*. It does not answer *"is that setup happening?"* — so the cockpit holds evidence and no
+trigger, and the two never meet. §18 splits them.
+
+### 18a. The statistics panel is renamed `Conditional Rates`
+
+Not `Probabilities`: the Atlas contract prohibits probability wording until calibrated status is
+earned, and the navigation is the one place every screen inherits its claim from. Not `Base Rates`
+either — the panel renders `Baseline rate` as a *distinct field*, the unconditional comparison
+cohort, and its whole differentiator is showing the conditional rate **beside** that baseline.
+Naming the tab after the baseline would name it after the thing it is contrasting against. The
+contract's own preferred phrase is *observed conditional hit rate*.
+
+### 18b. `Screener` becomes an actionable page
+
+For the instrument **currently on the chart**: which saved setups matched, on which timeframes.
+Rows are setups drawn from the §15 library, columns are timeframes, and the cell is the observation.
+
+**What it must not do, and why the operator's "in real time" cannot be delivered as asked.** There
+is no market data and no engine (§0, and `HANDOFF.md`'s house rules). So:
+
+- **No clock.** No polling, no timers, no "2 min ago" computed at render. Every evaluated-at stamp
+  is read from the fixture, never from `Date.now()` — a page that derives freshness from the
+  machine clock is claiming a feed it does not have.
+- **No cell may say a setup *is* active.** That is a pre-outcome claim over descriptive fixture
+  data, and it is the wording class the Atlas contract prohibits. A cell states what was observed
+  at a recorded time, in the past tense.
+- **A saved run's scope is immutable (§15a).** A run captured on XAUUSD 1h cannot supply a 4h cell.
+  Cells outside a run's captured scope refuse; they never recompute or re-scope it. This is §16's
+  rule that chart-linked mode *filters* rather than rescales, applied to a grid.
+- **No 1m column.** Standing multi-timeframe directive: 1m is a source resolution and is not
+  traded. An actionable cell on 1m is an instruction to trade it.
+- **The panel states it is not connected to market data**, and that notice is not dismissible.
+
+**The rule that ties the two tabs together:** a matched setup either links to its `Conditional
+Rates` evidence or **states that it has none**. A trigger without historical support is the thing
+this whole build exists to refuse, and an actionable page is exactly where that refusal matters
+most.
+
+**Two different empty states.** "You have saved no setups" is not "no setup matches this
+instrument", and they must read differently.
+
+---
+
 ## Sequencing
+
+**Amended 2026-08-05.** §18 was inserted ahead of §17 on operator direction. §17 is **not dropped**
+— it remains specced above with a `ready` card, and the deferral is recorded here so it does not
+become the item nobody mentioned again.
 
 1. **§15 Strategy Library** — smallest, no new statistics, and it is where "save my good ones"
    becomes visible. Fixture-backed, labelled as such.

@@ -11,18 +11,23 @@ import {
   refusalFor,
   type Report,
   totalFor,
-} from "../screener";
+} from "../rates";
 
 /**
- * §16 — the Screener. It screens CONDITIONS, not instruments.
+ * §16/§18a — Conditional Rates. What usually happened after a named setup.
  *
- * A conventional screener returns "stocks over their 200-day MA". This returns
- * how a named setup has historically resolved for this asset in this session,
- * and refuses to state a rate it cannot support. It is the front end for
- * Concept Behavior Atlas v1; the engine behind it does not exist yet and
- * nothing here pretends otherwise.
+ * This is the EVIDENCE half of the screening surface (§18a). It answers "what
+ * usually happened after this setup?" for this asset in this session, and
+ * refuses to state a rate it cannot support. The Screener answers the other
+ * half — whether the setup happened — and links back here.
+ *
+ * Named for the conditional rate, not the baseline: the panel renders
+ * `Baseline rate` as a separate field, and its whole point is showing the
+ * conditional rate BESIDE that baseline. It is not called Probabilities either;
+ * the Atlas contract prohibits that wording until calibrated status is earned,
+ * and the navigation is where every screen inherits its claim from.
  */
-export default function Screener({ symbol, timeframe }: { symbol: string; timeframe: string }) {
+export default function ConditionalRates({ symbol, timeframe }: { symbol: string; timeframe: string }) {
   const [id, setId] = useState(REPORTS[0].id);
   const [chartLinked, setChartLinked] = useState(false);
 
@@ -37,18 +42,18 @@ export default function Screener({ symbol, timeframe }: { symbol: string; timefr
   const report = offered.find((r) => r.id === id) ?? offered[0];
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col" data-apollo-id="screener">
+    <div className="flex min-h-0 flex-1 flex-col" data-apollo-id="conditional-rates">
       <header className="shrink-0 px-4 pt-3">
         <div className="flex items-center gap-2">
           <Radar size={15} className="text-accent" />
-          <h2 className="text-[15px] font-medium">Screener</h2>
+          <h2 className="text-[15px] font-medium">Conditional Rates</h2>
           <span className="text-[12px] text-text-muted">
             How a named setup has resolved before — not which instruments are moving now
           </span>
           <label className="ml-auto flex items-center gap-1.5 text-[11px] text-text-muted">
             <input
               type="checkbox"
-              data-apollo-id="screener-chart-linked"
+              data-apollo-id="rates-chart-linked"
               checked={chartLinked}
               onChange={(e) => setChartLinked(e.target.checked)}
               className="accent-accent"
@@ -56,7 +61,7 @@ export default function Screener({ symbol, timeframe }: { symbol: string; timefr
             Scope to the loaded chart ({symbol} · {timeframe})
           </label>
         </div>
-        <p className="mt-2 text-[11px] text-text-muted" data-apollo-id="screener-fixture-notice">
+        <p className="mt-2 text-[11px] text-text-muted" data-apollo-id="rates-fixture-notice">
           These reports are fixture data, not a live event ledger — the counts are fixed and no
           market is being read.
         </p>
@@ -92,11 +97,11 @@ function LeftRail({
     <aside className="flex flex-col gap-3 text-[11px]">
       <div>
         <div className="mb-1.5 tracking-[0.06em] text-text-muted uppercase">Report</div>
-        <ul className="flex flex-col gap-0.5" data-apollo-id="screener-report-list">
+        <ul className="flex flex-col gap-0.5" data-apollo-id="rates-report-list">
           {reports.map((r) => (
             <li key={r.id}>
               <button
-                data-apollo-id={`screener-report-${r.id}`}
+                data-apollo-id={`rates-report-${r.id}`}
                 aria-pressed={selected?.id === r.id}
                 onClick={() => onSelect(r.id)}
                 className={cx(
@@ -179,7 +184,7 @@ function ReportView({ report }: { report: Report }) {
 
   if (refusal) {
     return (
-      <div className="min-w-0" data-apollo-id={`screener-refusal-${refusal.id}`}>
+      <div className="min-w-0" data-apollo-id={`rates-refusal-${refusal.id}`}>
         <Card title={report.label}>
           <Refusal>
             <span>
@@ -200,7 +205,7 @@ function ReportView({ report }: { report: Report }) {
       {report.conditionsOnEventualCompletion && (
         <div
           className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] text-text-secondary"
-          data-apollo-id="screener-eventual-notice"
+          data-apollo-id="rates-eventual-notice"
         >
           <strong className="text-warning">Conditioned on eventual completion.</strong>{" "}
           {report.eventualNote}
@@ -211,14 +216,14 @@ function ReportView({ report }: { report: Report }) {
         <Card title={report.label}>
           <ClassFrequencyBars
             data={rows.filter((r) => !r.expression).map((r) => ({ label: r.label, rate: r.rate }))}
-            apolloId="screener-distribution"
+            apolloId="rates-distribution"
           />
           <Settings report={report} />
         </Card>
 
-        <div className="flex flex-col gap-2" data-apollo-id="screener-insights">
+        <div className="flex flex-col gap-2" data-apollo-id="rates-insights">
           {rows.map((r) => (
-            <div key={r.id} className="rounded-lg border border-border bg-bg-panel p-3" data-apollo-id={`screener-class-${r.id}`}>
+            <div key={r.id} className="rounded-lg border border-border bg-bg-panel p-3" data-apollo-id={`rates-class-${r.id}`}>
               <div className="flex items-baseline gap-2">
                 <span className="tnum text-[20px] font-medium">{r.rate.toFixed(2)}%</span>
                 <span className="text-[12px] text-text-secondary">{r.label}</span>
@@ -237,7 +242,7 @@ function ReportView({ report }: { report: Report }) {
           ))}
 
           {/* §9 — the classes AND the total. */}
-          <div className="rounded-lg border border-border px-3 py-2 text-[11px]" data-apollo-id="screener-class-total">
+          <div className="rounded-lg border border-border px-3 py-2 text-[11px]" data-apollo-id="rates-class-total">
             <span className="text-text-muted">Measured classes total </span>
             <span className="tnum text-text-secondary">
               {total.k} out of {total.n}
@@ -254,7 +259,7 @@ function ReportView({ report }: { report: Report }) {
           <Row label="Baseline cohort">{report.baseline?.label ?? "none"}</Row>
           <Row label="Baseline rate">{lift && <Q q={lift.baselineRate} unit="%" />}</Row>
           <Row label="Absolute lift">{lift && <Q q={lift.absolute} unit=" pp" signed />}</Row>
-          <Row label="Relative lift" apolloId="screener-relative-lift">
+          <Row label="Relative lift" apolloId="rates-relative-lift">
             {lift && <Q q={lift.relative} unit="%" signed />}
           </Row>
           <Row label="Sample retention">{lift && <Q q={lift.retention} unit="%" />}</Row>
@@ -273,7 +278,7 @@ function ReportView({ report }: { report: Report }) {
         </div>
 
         {/* §9 — unresolved, censored and excluded are shown SEPARATELY. */}
-        <div className="mt-3 grid gap-x-6 gap-y-2 border-t border-border pt-3 text-[12px]" style={{ gridTemplateColumns: "1fr 1fr" }} data-apollo-id="screener-censoring">
+        <div className="mt-3 grid gap-x-6 gap-y-2 border-t border-border pt-3 text-[12px]" style={{ gridTemplateColumns: "1fr 1fr" }} data-apollo-id="rates-censoring">
           <Row label="Unresolved">
             <span className="tnum">{report.censoring.unresolvedN}</span>
           </Row>
@@ -297,7 +302,7 @@ function ReportView({ report }: { report: Report }) {
 
 function Settings({ report }: { report: Report }) {
   return (
-    <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-2 text-[11px]" data-apollo-id="screener-settings">
+    <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-2 text-[11px]" data-apollo-id="rates-settings">
       {report.settings.map((s) => (
         <div key={s.label} className="flex gap-1.5">
           <dt className="text-text-muted">{s.label}</dt>

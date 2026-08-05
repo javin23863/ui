@@ -12,7 +12,82 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
-## §16 Screeners — MERGED TO MAIN 2026-08-05
+## ▶ §18 The screening surface is two surfaces — on `feat/setup-screener`, not yet merged
+
+| | |
+|---|---|
+| Branch | `feat/setup-screener`, worktree `C:\tmp\ui-setup-screener` |
+| Spec | `docs/UI-NEXT-INCREMENT.md` §18, recorded BEFORE code |
+| Card | `consumer.ui-setup-screener` — **active** |
+| plan-warden | ON PLAN WITH CORRECTIONS — five blocking, all applied |
+| Gates | sweep **39/39**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, **all seven parity sheets regenerated** |
+
+§16 answered *"what usually happens after this setup?"*. It could not answer *"is that setup
+happening?"* — so the cockpit held evidence and no trigger. §18 splits the surface in two.
+
+**18a — the statistics panel is now `Conditional Rates`.** Not `Probabilities`: the Atlas contract
+prohibits that wording until calibrated status is earned, and the navigation is where every screen
+inherits its claim from. **And not `Base Rates`, which was my first answer and was wrong** — the
+panel renders `Baseline rate` as a *separate field*, the unconditional comparison cohort, and its
+whole differentiator is showing the conditional rate **beside** that baseline. Naming the tab after
+the baseline names it after the thing it contrasts against. plan-warden caught it.
+
+The rename moved `data-apollo-id`s from `screener-*` to `rates-*`, a deliberate one-time break of
+§13's stability constraint: the **new** tab is the real screener and must own that prefix, and
+leaving them would have guaranteed ambiguous selectors. **The sweep was updated in the same
+commit** — a sweep that silently stops finding its selectors is a green run that checks nothing.
+
+**18b — `Screener` is now an actionable page.** For the instrument on the chart: which saved setups
+matched, on which timeframes. Rows come from the §15 library, columns are timeframes, the cell is
+the observation.
+
+### What the warden stopped, and it was most of the design
+
+- **A sixth rail entry is an undeclared divergence.** §3 records *five* icons as an observed
+  reference fact, unlike the labels, which §12 gap 3 marks inferred. Declared as **§0f before
+  shipping**, not after — §0e exists precisely because the orb was written down afterwards.
+- **No 1m column.** Standing multi-timeframe directive: 1m is a source resolution and is not
+  traded. An actionable cell on 1m is an instruction to trade it.
+- **No cell may say a setup *is* active.** That is a pre-outcome claim over descriptive fixture
+  data — the wording class the Atlas contract prohibits. Every state is past tense: what was
+  observed, and when.
+- **No clock.** Every stamp is read from the fixture, never `Date.now()`. A page deriving freshness
+  from the machine clock is claiming a feed it does not have.
+- **A saved run's scope is immutable (§15a).** The row states `history measured on XAUUSD 1h` and
+  nothing re-scopes it. This is §16's rule that chart-linked mode *filters* rather than rescales,
+  applied to a grid.
+
+### The rule that ties the two tabs together
+
+**A matched setup either links to its `Conditional Rates` evidence or states that it has none.** On
+screen the supported 1h matches render in accent and name their report; the unsupported 4h match
+renders in warning and reads *"no supporting history at this timeframe"*, and the header counts it:
+`3 matched · 1 with no supporting history`. A trigger a trader cannot check is the thing this build
+exists to refuse, and an actionable page is where that matters most.
+
+**"In real time" could not be delivered as asked** — there is no market data and no engine. The
+panel carries a non-dismissible *Not connected to market data* notice instead of implying a feed.
+
+**Proven by mutation**, six new rows, each individually: collapsing the two empty states flipped
+`none for this instrument`; the inverse collapse flipped `no saved setups`; gutting the notice
+flipped `says it is not live` and tripped its present-tense check; hiding the unsupported label
+flipped `unsupported match is labelled`; dropping the stamp flipped `no cell is silent` with
+`evaluatedWithoutStamp=3`; and re-scoping the captured timeframe flipped the cross-panel row with
+`screener=XAUUSD/4h | library=XAUUSD/1h`.
+
+> **The empty-state mutation proved the wrong row first, and that is worth keeping.** Forcing both
+> branches to the same sentence left `no saved setups` passing — because that row expects that
+> sentence. It proved `none for this instrument` instead. Two states that differ only by which
+> sentence renders need **two opposed mutations**, not one.
+
+> **A `reflow.mjs` gotcha, paid for on this branch.** `reflow.mjs` ATTACHES to an existing
+> dev-server tab; `sweep.mjs` opens its own. A freshly launched Chrome sitting on `about:blank`
+> makes reflow exit 1 with *"is the dev server up on 5199?"* while the dev server is perfectly
+> fine. Open a tab on the app first.
+
+---
+
+## §16 Conditional Rates — MERGED TO MAIN 2026-08-05 (renamed by §18a)
 
 | | |
 |---|---|
@@ -23,7 +98,7 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Gates | sweep **33/33**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, parity regenerated |
 | Greptile | round 1 found **one P1, real, fixed** — see below |
 
-Reachable from the rail's `Screener` button. Screens **conditions, not instruments**: how a named
+Reachable from the rail's `Conditional Rates` button. Screens **conditions, not instruments**: how a named
 setup has resolved before, for this asset in this session — and it refuses to state a rate it
 cannot support.
 
@@ -295,7 +370,7 @@ npx tsc -b                # clean
 npm run build             # clean
 node scripts/parity.mjs   # regenerates all seven parity sheets
 node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
-node scripts/sweep.mjs    # empty-state sweep, 33 rows, asserts and exits non-zero
+node scripts/sweep.mjs    # empty-state sweep, 39 rows, asserts and exits non-zero
 ```
 
 The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:

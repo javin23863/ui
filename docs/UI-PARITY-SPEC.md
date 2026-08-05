@@ -14,7 +14,7 @@ validated color system (§2) + Apollo forward-context (§13). All same day.
 
 ## 0. Divergences from the reference
 
-Parity is the default. These four are not, and are called out so the parity gate never flags them
+Parity is the default. These are not, and are called out so the parity gate never flags them
 as defects and no one later "corrects" them back toward LuxAlgo.
 
 | § | Divergence | Why |
@@ -24,6 +24,7 @@ as defects and no one later "corrects" them back toward LuxAlgo.
 | §8c | **`Trades Analysis` tab is ours** — sample adequacy, cost sensitivity, IS/OOS split, R-distribution, MAE/MFE, duration/streaks, regime | Never opened in either video. Nothing to copy, so it carries our information instead. |
 | §8d | **`Trades Log` tab is ours** — 17-column auditable ledger, `Gross`/`Costs`/`Net` split out, `IS`/`OOS` per trade, cross-link to chart | Same. |
 | §0e | **Apollo presence orb** — a small draggable sphere, always on screen, pulsing on its state table | Added retrospectively 2026-08-05. It shipped in P4 with **no plan item**: it is not a reference element, and §13 explicitly defers where Apollo's presence lives. Recording it as a divergence rather than deleting it, on the operator's ruling that Apollo is "an ever-presence". |
+| §0f | **A sixth rail entry** — the rail carries `New chat · Indicators · Screener · Conditional Rates · History`, where §3 observed **five** | Declared **before** shipping, 2026-08-05. §18 splits one surface into two: the statistics panel keeps the evidence and is renamed `Conditional Rates`, and `Screener` becomes an actionable page. Both need their own entry. The icon *count* in §3 is an observed reference fact, unlike the labels, which §12 gap 3 records as inferred — so adding one is a real divergence and not a reading correction. |
 
 **§0e is a correction, not a decision made in advance.** The orb was built and merged before anyone
 wrote it down, which is exactly the drift this table exists to prevent — a divergence nobody
@@ -296,6 +297,9 @@ Five icons, top to bottom, all `--icon-idle` at rest, `--text-primary` on active
 3. Indicators
 4. Screener / scanner
 5. History
+
+**We ship six**, not five — see §0f. The reference's five are the observed set; our sixth exists
+because §18 splits the screening surface into an actionable page and the statistics behind it.
 
 No labels, no tooltips observed in frame. Rail bg is identical to page bg — there is **no divider**
 between rail and chat pane.

@@ -1,5 +1,5 @@
 /**
- * §16 Screeners — the report model.
+ * §16/§18a Conditional Rates — the report model.
  *
  * This is the front end for Concept Behavior Atlas v1
  * (`Documents/tradercockpit/research/edgeful-concept-behavior-atlas-spec-2026-08-02.md`).

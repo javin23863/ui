@@ -138,21 +138,34 @@ try {
       `(() => { const el = document.querySelector('[data-apollo-id^="library-card-"]'); return el ? el.getAttribute('data-apollo-id') : null; })()`,
     );
 
-  /** Open the §16 screener on a given report. */
-  const screener = async (reportId) => {
+  /** Open the §16/§18a Conditional Rates panel on a given report. */
+  const rates = async (reportId) => {
     await load();
-    await click("rail-screener");
-    if (reportId) await click(`screener-report-${reportId}`);
+    await click("rail-conditional-rates");
+    if (reportId) await click(`rates-report-${reportId}`);
   };
-  const screenerText = () => evaluate(`document.querySelector('[data-apollo-id="screener"]')?.innerText ?? ''`);
+  const ratesText = () => evaluate(`document.querySelector('[data-apollo-id="conditional-rates"]')?.innerText ?? ''`);
   /** k and n as rendered for one outcome class, parsed off the card itself. */
   const classCount = (cls) =>
     evaluate(`(() => {
-      const el = document.querySelector('[data-apollo-id="screener-class-${cls}"]');
+      const el = document.querySelector('[data-apollo-id="rates-class-${cls}"]');
       if (!el) return null;
       const m = el.innerText.match(/(\\d+)\\s+out of\\s+(\\d+)\\s+(\\w+)/);
       return m ? { k: +m[1], n: +m[2], label: m[3] } : null;
     })()`);
+
+  /** Open the §18b actionable Screener, optionally on another instrument. */
+  const screener = async ({ seeded = true, symbol = null } = {}) => {
+    await load(seeded ? "?seed=1" : "");
+    if (symbol) {
+      await click("symbol-picker");
+      await click(`ticker-cat-${symbol.cat}`);
+      await click(`ticker-${symbol.sym}`);
+    }
+    await click("rail-screener");
+  };
+  const screenerText = () =>
+    evaluate(`document.querySelector('[data-apollo-id="screener"]')?.innerText ?? ''`);
 
   const DATA_ROWS = [
     {
@@ -619,7 +632,7 @@ try {
         ];
       },
     },
-    // ------------------------------------------------------------ §16 screener
+    // --------------------------------------------------- §16/§18a conditional rates
     // The five refusals §16 names. Each states WHY, and none renders a rate.
 
     ...[
@@ -629,14 +642,14 @@ try {
       ["no-baseline", "baseline cohort unavailable", /Baseline cohort unavailable/i],
       ["overlapping", "no independent-unit rule", /no independent-unit rule/i],
     ].map(([id, name, pattern]) => ({
-      row: `screener refuses: ${name}`,
-      setup: () => screener(id),
+      row: `conditional rates refuses: ${name}`,
+      setup: () => rates(id),
       check: async () => {
-        const t = await screenerText();
+        const t = await ratesText();
         const refused = pattern.test(t);
         // A refusing report must not also print a headline rate.
         const rate = await evaluate(
-          `document.querySelectorAll('[data-apollo-id^="screener-class-"]').length`,
+          `document.querySelectorAll('[data-apollo-id^="rates-class-"]').length`,
         );
         return [refused && rate === 0, `refusalShown=${refused} classCardsRendered=${rate}`];
       },
@@ -647,10 +660,10 @@ try {
       // shown SEPARATELY. Folding them into the denominator is how a rate reads
       // higher than it is.
       row: "censored counts shown separately",
-      setup: () => screener("gap-fill"),
+      setup: () => rates("gap-fill"),
       check: async () => {
         const r = await evaluate(`(() => {
-          const el = document.querySelector('[data-apollo-id="screener-censoring"]');
+          const el = document.querySelector('[data-apollo-id="rates-censoring"]');
           if (!el) return null;
           const t = el.innerText;
           const g = (k) => { const m = t.match(new RegExp(k + '\\\\s*\\\\n?\\\\s*(\\\\d+)')); return m ? +m[1] : null; };
@@ -665,15 +678,15 @@ try {
       // Atlas §9: all mutually exclusive classes AND the total, and a derived
       // class carries the exact expression it is composed from.
       row: "class total and derived expression",
-      setup: () => screener("ib-breakout"),
+      setup: () => rates("ib-breakout"),
       check: async () => {
         const total = await evaluate(`(() => {
-          const el = document.querySelector('[data-apollo-id="screener-class-total"]');
+          const el = document.querySelector('[data-apollo-id="rates-class-total"]');
           const m = el && el.innerText.match(/(\\d+)\\s+out of\\s+(\\d+)/);
           return m ? { k: +m[1], n: +m[2] } : null;
         })()`);
         const derived = await evaluate(`(() => {
-          const el = document.querySelector('[data-apollo-id="screener-class-any"]');
+          const el = document.querySelector('[data-apollo-id="rates-class-any"]');
           if (!el) return null;
           return { expr: /single \\+ double/.test(el.innerText), marked: /derived/i.test(el.innerText) };
         })()`);
@@ -689,9 +702,9 @@ try {
       // renders the reason. A dash would say "we have no view"; the reason says
       // which quotient was undefined and why.
       row: "undefined lift renders its reason",
-      setup: () => screener("zero-baseline"),
+      setup: () => rates("zero-baseline"),
       check: async () => {
-        const t = await screenerText();
+        const t = await ratesText();
         const reason = /baseline rate is 0 — relative lift is undefined, not infinite/i.test(t);
         // and it must not have quietly rendered a dash or an Infinity instead
         const bad = /Relative lift\s*\n?\s*(—|-|Infinity|NaN)/i.test(t);
@@ -702,9 +715,9 @@ try {
       // Atlas §11.3: raw vs independent n is not enough — the RULE that produced
       // the difference has to be named, and so does any adjustment.
       row: "independent-unit rule is named",
-      setup: () => screener("ib-breakout"),
+      setup: () => rates("ib-breakout"),
       check: async () => {
-        const t = await screenerText();
+        const t = await ratesText();
         const raw = /Raw events\s*\n?\s*124/i.test(t);
         const ind = /Independent observations\s*\n?\s*124/i.test(t);
         const rule = /one observation per session/i.test(t);
@@ -718,16 +731,16 @@ try {
       // "price breaks by 10:30 95% of the time", which Atlas §15 lists as
       // prohibited wording.
       row: "eventual conditioning is stated",
-      setup: () => screener("orb-timing"),
+      setup: () => rates("orb-timing"),
       check: async () => {
         const notice = await evaluate(
-          `document.querySelector('[data-apollo-id="screener-eventual-notice"]')?.innerText ?? ''`,
+          `document.querySelector('[data-apollo-id="rates-eventual-notice"]')?.innerText ?? ''`,
         );
         const stated = /conditions on sessions that eventually produced/i.test(notice);
         const denom = await classCount("before");
         // The denominator label must say what the 65 counts, not "sample size".
         const labelled = denom?.label === "eventual_single_break_sessions_n";
-        const t = await screenerText();
+        const t = await ratesText();
         const forecastWording = /chance of|probability|% of the time/i.test(t);
         return [
           stated && labelled && !forecastWording,
@@ -741,16 +754,16 @@ try {
       // view of the same report, so it must not move the report's counts —
       // scoping filters which reports apply, it does not rescale one.
       row: "chart-linked agrees with unscoped",
-      setup: () => screener("gold-london-sweep"),
+      setup: () => rates("gold-london-sweep"),
       check: async () => {
         // Count BUTTONS, not any node whose id starts with the prefix — the
         // list container's own id shares it, and counting the container made an
         // earlier version of this row pass for the wrong reason.
         const count = () =>
-          evaluate(`document.querySelectorAll('button[data-apollo-id^="screener-report-"]').length`);
+          evaluate(`document.querySelectorAll('button[data-apollo-id^="rates-report-"]').length`);
         const before = await classCount("reversed");
         const offeredUnscoped = await count();
-        await click("screener-chart-linked");
+        await click("rates-chart-linked");
         const offeredScoped = await count();
         const after = await classCount("reversed");
         const same =
@@ -776,17 +789,17 @@ try {
         await click("symbol-picker");
         await click("ticker-cat-crypto");
         await click("ticker-btcusd");
-        await click("rail-screener");
-        await click("screener-chart-linked");
+        await click("rail-conditional-rates");
+        await click("rates-chart-linked");
       },
       check: async () => {
         const label = await evaluate(
           `[...document.querySelectorAll('label')].find((l) => /Scope to the loaded chart/.test(l.textContent))?.textContent?.trim() ?? ''`,
         );
         const offered = await evaluate(
-          `[...document.querySelectorAll('button[data-apollo-id^="screener-report-"]')].map((b) => b.textContent.trim())`,
+          `[...document.querySelectorAll('button[data-apollo-id^="rates-report-"]')].map((b) => b.textContent.trim())`,
         );
-        const t = await evaluate(`document.querySelector('[data-apollo-id="screener"]')?.innerText ?? ''`);
+        const t = await evaluate(`document.querySelector('[data-apollo-id="conditional-rates"]')?.innerText ?? ''`);
         const labelFollows = /BTCUSD/.test(label) && !/XAUUSD/.test(label);
         // No XAUUSD-only report may be offered as "scoped to" a BTCUSD chart.
         const noForeignReport = !offered.includes("London open sweep");
@@ -798,14 +811,148 @@ try {
       },
     },
     {
-      row: "screener states it is fixture data",
-      setup: () => screener("ib-breakout"),
+      row: "conditional rates states it is fixture data",
+      setup: () => rates("ib-breakout"),
       check: async () => {
         const t = await evaluate(
-          `document.querySelector('[data-apollo-id="screener-fixture-notice"]')?.innerText ?? ''`,
+          `document.querySelector('[data-apollo-id="rates-fixture-notice"]')?.innerText ?? ''`,
         );
         const ok = /fixture data/i.test(t) && /not a live event ledger/i.test(t);
         return [ok, ok ? "fixture status stated on screen" : `notice missing or silent: "${t}"`];
+      },
+    },
+    // ------------------------------------------------------- §18b screener
+
+    {
+      // "You have saved nothing" is not "nothing matches this instrument".
+      row: "screener: no saved setups",
+      setup: () => screener({ seeded: false }),
+      check: async () => {
+        const t = await screenerText();
+        const right = /No saved setups yet/i.test(t);
+        const wrong = /None of your saved setups were measured/i.test(t);
+        const cells = await evaluate(
+          `document.querySelectorAll('[data-apollo-id^="screener-cell-"]').length`,
+        );
+        return [right && !wrong && cells === 0, `emptyLibraryState=${right} wrongState=${wrong} cells=${cells}`];
+      },
+    },
+    {
+      // A setup measured on another instrument is a different claim, so it is
+      // not screened here — the panel refuses rather than borrowing rows.
+      row: "screener: none for this instrument",
+      setup: () => screener({ symbol: { cat: "crypto", sym: "ethusd" } }),
+      check: async () => {
+        const t = await screenerText();
+        const right = /None of your saved setups were measured on ETHUSD/i.test(t);
+        const wrong = /No saved setups yet/i.test(t);
+        const cells = await evaluate(
+          `document.querySelectorAll('[data-apollo-id^="screener-cell-"]').length`,
+        );
+        return [right && !wrong && cells === 0, `noneForSymbol=${right} wrongState=${wrong} cells=${cells}`];
+      },
+    },
+    {
+      // The single most misleading thing this build could ship is an actionable
+      // page that looks live. The notice states it, and nothing on the page may
+      // claim a setup is happening now.
+      row: "screener says it is not live",
+      setup: () => screener(),
+      check: async () => {
+        const notice = await evaluate(
+          `document.querySelector('[data-apollo-id="screener-not-live"]')?.innerText ?? ''`,
+        );
+        const stated = /Not connected to market data/i.test(notice) && /Nothing here updates/i.test(notice);
+        const t = await screenerText();
+        // Present-tense activity claims are the prohibited wording class.
+        const presentTense = /\bis active\b|\bactive now\b|\btriggering\b|\bhappening now\b(?!\.)/i.test(
+          t.replace(/nothing here says a setup is happening now/i, ""),
+        );
+        return [stated && !presentTense, `noticeShown=${stated} presentTenseClaim=${presentTense}`];
+      },
+    },
+    {
+      // The rule that ties the two tabs together: a match with nothing behind it
+      // is labelled, not shown like the supported ones.
+      row: "unsupported match is labelled",
+      setup: () => screener(),
+      check: async () => {
+        const r = await evaluate(`(() => {
+          const supported = document.querySelector('[data-apollo-id="screener-cell-run-liquidity-sweep-1h"]');
+          const unsupported = document.querySelector('[data-apollo-id="screener-cell-run-liquidity-sweep-4h"]');
+          if (!supported || !unsupported) return null;
+          return {
+            supportedNamesReport: /gold-london-sweep/.test(supported.innerText),
+            unsupportedSaysSo: /no supporting history at this timeframe/i.test(unsupported.innerText),
+            unsupportedNamesReport: /history:/.test(unsupported.innerText),
+          };
+        })()`);
+        if (!r) return [false, "expected cells not rendered"];
+        const ok = r.supportedNamesReport && r.unsupportedSaysSo && !r.unsupportedNamesReport;
+        return [
+          ok,
+          `supportedNamesItsReport=${r.supportedNamesReport} unsupportedLabelled=${r.unsupportedSaysSo} unsupportedClaimsReport=${r.unsupportedNamesReport}`,
+        ];
+      },
+    },
+    {
+      // Every cell answers. A blank cell reads as "nothing happened" when it may
+      // mean "never looked".
+      row: "no cell is silent",
+      setup: () => screener(),
+      check: async () => {
+        const r = await evaluate(`(() => {
+          const cells = [...document.querySelectorAll('[data-apollo-id^="screener-cell-"]')];
+          const blank = cells.filter((c) => !c.innerText.trim());
+          const stamped = cells.filter((c) => /matched|no match/i.test(c.innerText));
+          const noStamp = stamped.filter((c) => !/\\d{4}-\\d{2}-\\d{2}/.test(c.innerText));
+          const has1m = !!document.querySelector('[data-apollo-id$="-1m"]');
+          return { total: cells.length, blank: blank.length, evaluated: stamped.length, noStamp: noStamp.length, has1m };
+        })()`);
+        const ok = r.total > 0 && r.blank === 0 && r.noStamp === 0 && !r.has1m;
+        return [
+          ok,
+          `cells=${r.total} blank=${r.blank} evaluatedWithoutStamp=${r.noStamp} has1mColumn=${r.has1m}`,
+        ];
+      },
+    },
+    {
+      // POSITIVE cross-panel agreement, not a refusal. This surface reads from
+      // the library AND the rates panel, so it is the one most able to state a
+      // setup's scope differently from the panel that owns it. The §15 scar:
+      // two panels can each be correct alone and still contradict each other.
+      row: "screener agrees with library and rates",
+      setup: () => screener(),
+      check: async () => {
+        const screen = await evaluate(`(() => {
+          const rows = [...document.querySelectorAll('[data-apollo-id="screener-matrix"] tbody tr')];
+          const first = rows[0];
+          if (!first) return null;
+          const cell = first.querySelector('td');
+          const m = cell.innerText.match(/history measured on (\\S+) (\\S+)/);
+          return { setup: cell.querySelector('div').textContent.trim(), symbol: m?.[1], timeframe: m?.[2] };
+        })()`);
+        if (!screen) return [false, "no screener rows"];
+        // What the §15 library says about that same saved run.
+        await click("rail-history");
+        const lib = await evaluate(`(() => {
+          const c = [...document.querySelectorAll('[data-apollo-id^="library-card-"]')]
+            .find((x) => x.innerText.includes(${JSON.stringify("")} + ${JSON.stringify(screen.setup)}));
+          if (!c) return null;
+          const m = c.innerText.match(/([A-Z]{3,6})\\s*·\\s*(\\S+)\\s*·/);
+          return { symbol: m?.[1], timeframe: m?.[2] };
+        })()`);
+        // And that the report the screener cites actually exists in the rates panel.
+        await click("rail-conditional-rates");
+        const reportExists = await evaluate(
+          `!!document.querySelector('[data-apollo-id="rates-report-gold-london-sweep"]')`,
+        );
+        const agree =
+          !!lib && lib.symbol === screen.symbol && lib.timeframe === screen.timeframe && reportExists;
+        return [
+          agree,
+          `screener="${screen.setup}" ${screen.symbol}/${screen.timeframe} | library=${lib?.symbol}/${lib?.timeframe} | citedReportExists=${reportExists}`,
+        ];
       },
     },
   ];
