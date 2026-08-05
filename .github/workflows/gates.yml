@@ -1,0 +1,43 @@
+name: gates
+
+# §11 asked for the colour gate to run in CI on the token file: "A hex that
+# enters --profit, --loss, --warning, --accent or a series slot without a
+# passing run is a defect regardless of how it looks." Until now it ran only
+# when someone remembered, which is the class of gate this repo keeps writing
+# down and not executing.
+#
+# CEILING, stated rather than discovered: this repo has no branch protection
+# (no paid plan), so a red run here is DETECTED and RECORDED — it does not stop
+# a merge. Read the run before merging; the check does not read it for you.
+#
+# The two browser gates are deliberately NOT here. scripts/reflow.mjs and
+# scripts/sweep.mjs need a dev server plus a CDP Chrome, and a flaky required
+# check teaches people to ignore checks. They run locally and their artifacts
+# are committed under docs/reflow and docs/sweep.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Reads the hexes back out of src/tokens.css, so the gate cannot drift
+      # from the file it is meant to be checking.
+      - name: colour system (§2c)
+        run: npm run check:palette
+
+      - name: typecheck
+        run: npx tsc -b
+
+      - name: build
+        run: npm run build

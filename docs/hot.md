@@ -24,9 +24,12 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ### What is built
 
-Shell · chat pane with markdown transcript and voice dictation · chart pane · Pine code view ·
-collapsed backtest dock · expanded backtest panel · `Trades Analysis` · `Trades Log` ·
-settings modal · ticker picker · Apollo presence orb.
+Shell · chat pane with markdown transcript and voice dictation · chart pane · **symbol picker and
+timeframe dropdown** (`1m 5m 15m 1h 4h D W`, matching §9 — this list previously omitted them, which
+read as work still owed) · Pine code view · collapsed backtest dock · expanded backtest panel with
+independent `All`/`Long`/`Short` filters on the metrics table and the weekday card ·
+`Trades Analysis` · `Trades Log` · settings modal · Apollo presence orb (recorded as divergence
+§0e — it shipped before anyone wrote it down).
 
 Everything renders from `src/fixtures/market.ts`, seeded so screenshots are reproducible.
 **No LLM, no Pine compilation, no market data, no backtest engine** — capabilities are out of scope
@@ -38,8 +41,26 @@ by design, so the chat reply is a scripted fixture that does not respond to what
 npm run check:palette     # reads hexes out of src/tokens.css, 20/20
 npx tsc -b                # clean
 npm run build             # clean
-node scripts/parity.mjs   # regenerates all seven sheets (needs dev server + CDP)
+node scripts/parity.mjs   # regenerates all seven parity sheets
+node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
+node scripts/sweep.mjs    # P6 empty-state sweep, 10 rows, asserts and exits non-zero
 ```
+
+The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:
+
+```
+chrome --remote-debugging-port=9333 --user-data-dir=<scratch> --window-size=1920,1080
+```
+
+The first three also run in CI (`.github/workflows/gates.yml`) on every push to main and every PR.
+**No branch protection on this repo**, so a red run is detected and recorded, not blocking — read
+it before merging.
+
+> **`sweep.mjs` opens its own Chrome tab and closes it in `finally`. Do not change that.** Its
+> voice rows register `Page.addScriptToEvaluateOnNewDocument` handlers that survive navigation and
+> outlive the process. A killed run leaves the tab with `SpeechRecognition` deleted and
+> `getUserMedia` stubbed, and every later load renders BLANK with no exception — indistinguishable
+> from a broken dev server.
 
 Three fixture invariants also run on every dev boot (`src/fixtures/market.ts`): weekday total equals
 net profit, gross profit minus gross loss equals net profit, wins plus losses equals the trade
