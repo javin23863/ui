@@ -1,4 +1,4 @@
-import { type Censoring, type Dependence, type Report, totalFor } from "../screener";
+import { type Censoring, type Dependence, type Report, totalFor } from "../rates";
 
 /**
  * Fixture reports for §16.

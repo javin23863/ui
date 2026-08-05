@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ChevronDown, Clock, Hexagon, PencilLine, Radar, Sparkles, User } from "lucide-react";
+import { ChevronDown, Clock, Hexagon, PencilLine, Percent, Radar, Sparkles, User } from "lucide-react";
 import ChatPane, { type Turn } from "./components/ChatPane";
 import Workspace from "./components/Workspace";
 import StrategyLibrary from "./components/StrategyLibrary";
-import Screener from "./components/Screener";
+import ConditionalRates from "./components/ConditionalRates";
+import SetupScreener from "./components/SetupScreener";
 import ApolloOrb from "./components/ApolloOrb";
 import { ApolloContext, type ApolloState } from "./components/useApollo";
 import { captureCurrentRun, type Profile, type SavedRun, SEEDED_RUNS } from "./runs";
@@ -11,15 +12,23 @@ import { summary } from "./fixtures/market";
 import { cx } from "./ui";
 
 /** Rail entries that open a pane. The others are not built and stay inert. */
-const RAIL_PANE: Record<string, "library" | "screener" | undefined> = {
+type Pane = "workspace" | "library" | "rates" | "screener";
+
+/** Rail entries that open a pane. The others are not built and stay inert. */
+const RAIL_PANE: Record<string, Exclude<Pane, "workspace"> | undefined> = {
   History: "library",
   Screener: "screener",
+  "Conditional Rates": "rates",
 };
 
+// SIX entries where the reference has five — declared as §0f in the parity spec
+// BEFORE shipping, because §18 splits the screening surface in two: `Screener`
+// is the actionable page, `Conditional Rates` is the evidence behind it.
 const RAIL = [
   { icon: PencilLine, label: "New chat" },
   { icon: Sparkles, label: "Indicators" },
   { icon: Radar, label: "Screener" },
+  { icon: Percent, label: "Conditional Rates" },
   { icon: Clock, label: "History" },
 ];
 
@@ -61,7 +70,9 @@ export default function App() {
   const [runs, setRuns] = useState<SavedRun[]>(SEEDED ? SEEDED_RUNS : []);
   // Which pane the right-hand side is showing. The rail drives it; "workspace"
   // is the chart/code/backtest surface.
-  const [pane, setPane] = useState<"workspace" | "library" | "screener">("workspace");
+  const [pane, setPane] = useState<Pane>("workspace");
+  // Which report the rates panel should open on when the Screener hands off.
+  const [evidenceReport, setEvidenceReport] = useState<string | null>(null);
   // The chart the cockpit is showing. Owned here because two panes read it: the
   // workspace renders it, and the Screener's chart-linked scope claims to follow
   // it. Held in Workspace, that claim was a label over a constant.
@@ -157,7 +168,18 @@ export default function App() {
           <div className="min-h-0 min-w-0 flex-1 pl-4">
             {pane === "screener" ? (
               <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">
-                <Screener symbol={symbol} timeframe={timeframe} />
+                <SetupScreener
+                  symbol={symbol}
+                  runs={runs}
+                  onOpenEvidence={(id) => {
+                    setEvidenceReport(id);
+                    setPane("rates");
+                  }}
+                />
+              </section>
+            ) : pane === "rates" ? (
+              <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">
+                <ConditionalRates symbol={symbol} timeframe={timeframe} reportId={evidenceReport} />
               </section>
             ) : pane === "library" ? (
               <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">

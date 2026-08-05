@@ -28,14 +28,14 @@ npm i && npm run dev      # → http://localhost:5199
 |---|---|---|
 | 1 | [`docs/hot.md`](hot.md) | **Live state.** What is built, what is green, the traps already paid for. Read first, every session. |
 | 2 | [`docs/UI-PARITY-SPEC.md`](UI-PARITY-SPEC.md) | The parity plan, **complete**. §0 divergences · §8c/§8d our two tabs · §11 phases + gates · §12 gap dispositions · §13 Apollo forward-context. |
-| 3 | [`docs/UI-NEXT-INCREMENT.md`](UI-NEXT-INCREMENT.md) | **What to build next.** §15 Strategy Library · §16 Screeners · §17 strategy languages + indicator families. |
+| 3 | [`docs/UI-NEXT-INCREMENT.md`](UI-NEXT-INCREMENT.md) | **What to build next.** §15 Strategy Library · §16 Conditional Rates · §17 strategy languages + indicator families · §18 the screening surface split in two. |
 | 4 | [`docs/parity/README.md`](parity/README.md) | How the seven side-by-side sheets are produced and what the gate actually checks. |
 
 **Reference material outside this repo** (same machine):
 
 | Path | What it is |
 |---|---|
-| `Documents/tradercockpit/research/edgeful-concept-behavior-atlas-spec-2026-08-02.md` | **The screener's backend contract.** §9 denominators · §10 outcome families · §11.2 baseline+lift · §11.3 dependence. §16 is this spec's front end. |
+| `Documents/tradercockpit/research/edgeful-concept-behavior-atlas-spec-2026-08-02.md` | **The Conditional Rates panel's backend contract.** §9 denominators · §10 outcome families · §11.2 baseline+lift · §11.3 dependence. §16 is this spec's front end. |
 | `Documents/tradercockpit/research/edgeful-concept-behavior-atlas-plan-2026-08-02.md` | Implementation plan for the same. |
 | `Documents/tradercockpit/research/edgeful-conditional-market-statistics-2026-08-02.md` | The research report behind both. |
 | `Documents/tradercockpit/research/evidence/edgeful-conditional-market-statistics/` | **9 screenshots of the surface §16 is modelled on**, with per-frame SHA-256 in its README. Already captured — do not ask for them again. |
@@ -50,7 +50,8 @@ npm i && npm run dev      # → http://localhost:5199
 | `consumer.ui-p6-gates` | **active** — PR #3 merged, awaiting the same |
 | `consumer.ui-strategy-library` | **verify** — §15 merged (PR #4), operator moves to done |
 | `consumer.ui-screeners` | **verify** — §16 merged (PR #5), operator moves to done |
-| `consumer.ui-indicator-representation` | **ready** — §17 |
+| `consumer.ui-indicator-representation` | **ready** — §17, deferred behind §18 on operator direction |
+| `consumer.ui-setup-screener` | **active** — §18 on `feat/setup-screener` |
 
 ---
 
@@ -70,7 +71,7 @@ The two browser gates need `npm run dev` on 5199 **and** a Chrome on CDP 9333:
 ```bash
 chrome --remote-debugging-port=9333 --user-data-dir=<scratch> --window-size=1920,1080
 node scripts/reflow.mjs   # 1440 + 1280, asserts, exits non-zero
-node scripts/sweep.mjs    # 33-row empty-state sweep, asserts, exits non-zero
+node scripts/sweep.mjs    # 41-row empty-state sweep, asserts, exits non-zero
 node scripts/parity.mjs   # regenerates the seven side-by-side sheets
 ```
 
