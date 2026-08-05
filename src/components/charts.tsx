@@ -232,6 +232,70 @@ export function CategoryBars({
   );
 }
 
+/**
+ * Outcome-class frequencies (§16). Rates, not money.
+ *
+ * Deliberately NOT `CategoryBars`: that one is zero-centred and paints
+ * `--profit` / `--loss`, which would colour "no break" red as though a class of
+ * the distribution were a loss. §2d already rules that regimes are not a
+ * categorical palette, and the same holds here — these use the validated
+ * `--color-series-*` slots, and the class is named on the axis so colour is
+ * never the only carrier.
+ *
+ * Above three classes the palette runs out, and the bars fall back to a single
+ * series colour rather than inventing an unvalidated hex. The labels still
+ * distinguish them.
+ */
+export function ClassFrequencyBars({
+  data,
+  apolloId,
+}: {
+  data: { label: string; rate: number }[];
+  apolloId: string;
+}) {
+  const bw = plotW / Math.max(data.length, 1);
+  const base = H - PAD.b;
+  const series = ["--color-series-1", "--color-series-2", "--color-series-3"];
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="w-full"
+      role="img"
+      aria-label="Outcome class frequencies"
+      data-apollo-id={apolloId}
+      data-apollo-series={JSON.stringify({ kind: "class-frequency", data })}
+    >
+      <line x1={PAD.l} x2={W - PAD.r} y1={base} y2={base} className="stroke-border" strokeWidth={1} />
+      {[0, 25, 50, 75, 100].map((v) => (
+        <g key={v}>
+          <text x={PAD.l - 6} y={base - (v / 100) * plotH} textAnchor="end" dominantBaseline="middle" className="fill-text-muted text-[9px]">
+            {v}%
+          </text>
+          <line x1={PAD.l} x2={W - PAD.r} y1={base - (v / 100) * plotH} y2={base - (v / 100) * plotH} className="stroke-border" strokeWidth={0.5} opacity={v === 0 ? 0 : 0.4} />
+        </g>
+      ))}
+      {data.map((d, i) => {
+        const h = (Math.min(Math.max(d.rate, 0), 100) / 100) * plotH;
+        const x = PAD.l + i * bw + bw * 0.25;
+        const colour = `var(${data.length <= series.length ? series[i] : series[0]})`;
+        return (
+          <g key={d.label}>
+            <rect x={x} y={base - h} width={bw * 0.5} height={Math.max(h, d.rate === 0 ? 0 : 1)} rx={2} fill={colour}>
+              <title>{`${d.label}: ${d.rate.toFixed(2)}%`}</title>
+            </rect>
+            <text x={PAD.l + i * bw + bw / 2} y={base - h - 4} textAnchor="middle" className="fill-text-secondary text-[9px]">
+              {d.rate.toFixed(2)}%
+            </text>
+            <text x={PAD.l + i * bw + bw / 2} y={H - 5} textAnchor="middle" className="fill-text-muted text-[9px]">
+              {d.label}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 /** Cost sensitivity — x is dollars per round turn, not time (§8c.2). */
 export function CostCurve({
   points,

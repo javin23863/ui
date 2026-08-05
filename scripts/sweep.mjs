@@ -138,6 +138,22 @@ try {
       `(() => { const el = document.querySelector('[data-apollo-id^="library-card-"]'); return el ? el.getAttribute('data-apollo-id') : null; })()`,
     );
 
+  /** Open the §16 screener on a given report. */
+  const screener = async (reportId) => {
+    await load();
+    await click("rail-screener");
+    if (reportId) await click(`screener-report-${reportId}`);
+  };
+  const screenerText = () => evaluate(`document.querySelector('[data-apollo-id="screener"]')?.innerText ?? ''`);
+  /** k and n as rendered for one outcome class, parsed off the card itself. */
+  const classCount = (cls) =>
+    evaluate(`(() => {
+      const el = document.querySelector('[data-apollo-id="screener-class-${cls}"]');
+      if (!el) return null;
+      const m = el.innerText.match(/(\\d+)\\s+out of\\s+(\\d+)\\s+(\\w+)/);
+      return m ? { k: +m[1], n: +m[2], label: m[3] } : null;
+    })()`);
+
   const DATA_ROWS = [
     {
       // §11 declares TWO behaviours for this one input: the cost-sensitivity
@@ -601,6 +617,162 @@ try {
           !active && archived,
           `inActiveView=${active} inArchivedView=${archived}`,
         ];
+      },
+    },
+    // ------------------------------------------------------------ §16 screener
+    // The five refusals §16 names. Each states WHY, and none renders a rate.
+
+    ...[
+      ["no-sessions", "no eligible sessions", /No eligible sessions/i],
+      ["thin", "denominator below the floor", /below the stated floor of 30/i],
+      ["undeclared-censoring", "censoring undeclared", /No censoring policy declared/i],
+      ["no-baseline", "baseline cohort unavailable", /Baseline cohort unavailable/i],
+      ["overlapping", "no independent-unit rule", /no independent-unit rule/i],
+    ].map(([id, name, pattern]) => ({
+      row: `screener refuses: ${name}`,
+      setup: () => screener(id),
+      check: async () => {
+        const t = await screenerText();
+        const refused = pattern.test(t);
+        // A refusing report must not also print a headline rate.
+        const rate = await evaluate(
+          `document.querySelectorAll('[data-apollo-id^="screener-class-"]').length`,
+        );
+        return [refused && rate === 0, `refusalShown=${refused} classCardsRendered=${rate}`];
+      },
+    })),
+
+    {
+      // Atlas §9 via the plan's table: unresolved / censored / excluded are
+      // shown SEPARATELY. Folding them into the denominator is how a rate reads
+      // higher than it is.
+      row: "censored counts shown separately",
+      setup: () => screener("gap-fill"),
+      check: async () => {
+        const r = await evaluate(`(() => {
+          const el = document.querySelector('[data-apollo-id="screener-censoring"]');
+          if (!el) return null;
+          const t = el.innerText;
+          const g = (k) => { const m = t.match(new RegExp(k + '\\\\s*\\\\n?\\\\s*(\\\\d+)')); return m ? +m[1] : null; };
+          return { unresolved: g('Unresolved'), censored: g('Censored'), excluded: g('Excluded'), policy: /never folded/i.test(t) };
+        })()`);
+        if (!r) return [false, "no censoring block rendered"];
+        const ok = r.unresolved === 8 && r.censored === 3 && r.excluded === 11 && r.policy;
+        return [ok, `unresolved=${r.unresolved} censored=${r.censored} excluded=${r.excluded} policyStated=${r.policy}`];
+      },
+    },
+    {
+      // Atlas §9: all mutually exclusive classes AND the total, and a derived
+      // class carries the exact expression it is composed from.
+      row: "class total and derived expression",
+      setup: () => screener("ib-breakout"),
+      check: async () => {
+        const total = await evaluate(`(() => {
+          const el = document.querySelector('[data-apollo-id="screener-class-total"]');
+          const m = el && el.innerText.match(/(\\d+)\\s+out of\\s+(\\d+)/);
+          return m ? { k: +m[1], n: +m[2] } : null;
+        })()`);
+        const derived = await evaluate(`(() => {
+          const el = document.querySelector('[data-apollo-id="screener-class-any"]');
+          if (!el) return null;
+          return { expr: /single \\+ double/.test(el.innerText), marked: /derived/i.test(el.innerText) };
+        })()`);
+        if (!total || !derived) return [false, `total=${JSON.stringify(total)} derived=${JSON.stringify(derived)}`];
+        // The measured classes must add up to the denominator, and the derived
+        // class must NOT be counted into that total.
+        const ok = total.k === 124 && total.n === 124 && derived.expr && derived.marked;
+        return [ok, `total=${total.k}/${total.n} derivedShowsExpression=${derived.expr} markedDerived=${derived.marked}`];
+      },
+    },
+    {
+      // Atlas §11.2: division by zero returns null WITH A REASON, and the UI
+      // renders the reason. A dash would say "we have no view"; the reason says
+      // which quotient was undefined and why.
+      row: "undefined lift renders its reason",
+      setup: () => screener("zero-baseline"),
+      check: async () => {
+        const t = await screenerText();
+        const reason = /baseline rate is 0 — relative lift is undefined, not infinite/i.test(t);
+        // and it must not have quietly rendered a dash or an Infinity instead
+        const bad = /Relative lift\s*\n?\s*(—|-|Infinity|NaN)/i.test(t);
+        return [reason && !bad, `reasonRendered=${reason} dashOrInfinity=${bad}`];
+      },
+    },
+    {
+      // Atlas §11.3: raw vs independent n is not enough — the RULE that produced
+      // the difference has to be named, and so does any adjustment.
+      row: "independent-unit rule is named",
+      setup: () => screener("ib-breakout"),
+      check: async () => {
+        const t = await screenerText();
+        const raw = /Raw events\s*\n?\s*124/i.test(t);
+        const ind = /Independent observations\s*\n?\s*124/i.test(t);
+        const rule = /one observation per session/i.test(t);
+        const adj = /Dependence adjustment/i.test(t);
+        return [raw && ind && rule && adj, `rawN=${raw} independentN=${ind} unitRuleNamed=${rule} adjustmentStated=${adj}`];
+      },
+    },
+    {
+      // Atlas §8, and the whole reason this surface exists. 62 of 65 is a
+      // post-hoc timing distribution over days that eventually broke — it is not
+      // "price breaks by 10:30 95% of the time", which Atlas §15 lists as
+      // prohibited wording.
+      row: "eventual conditioning is stated",
+      setup: () => screener("orb-timing"),
+      check: async () => {
+        const notice = await evaluate(
+          `document.querySelector('[data-apollo-id="screener-eventual-notice"]')?.innerText ?? ''`,
+        );
+        const stated = /conditions on sessions that eventually produced/i.test(notice);
+        const denom = await classCount("before");
+        // The denominator label must say what the 65 counts, not "sample size".
+        const labelled = denom?.label === "eventual_single_break_sessions_n";
+        const t = await screenerText();
+        const forecastWording = /chance of|probability|% of the time/i.test(t);
+        return [
+          stated && labelled && !forecastWording,
+          `noticeShown=${stated} denominatorLabel=${denom?.label} k/n=${denom?.k}/${denom?.n} forecastWording=${forecastWording}`,
+        ];
+      },
+    },
+    {
+      // The §15 scar: a refusal-only sweep let five P1s through because no row
+      // ever asked whether two surfaces agreed. Chart-linked mode is a second
+      // view of the same report, so it must not move the report's counts —
+      // scoping filters which reports apply, it does not rescale one.
+      row: "chart-linked agrees with unscoped",
+      setup: () => screener("gold-london-sweep"),
+      check: async () => {
+        // Count BUTTONS, not any node whose id starts with the prefix — the
+        // list container's own id shares it, and counting the container made an
+        // earlier version of this row pass for the wrong reason.
+        const count = () =>
+          evaluate(`document.querySelectorAll('button[data-apollo-id^="screener-report-"]').length`);
+        const before = await classCount("reversed");
+        const offeredUnscoped = await count();
+        await click("screener-chart-linked");
+        const offeredScoped = await count();
+        const after = await classCount("reversed");
+        const same =
+          before && after && before.k === after.k && before.n === after.n && before.label === after.label;
+        // Scoping must actually narrow the list, or the agreement proves nothing.
+        const narrowed = offeredScoped > 0 && offeredScoped < offeredUnscoped;
+        return [
+          !!same && narrowed,
+          `unscoped=${before?.k}/${before?.n} scoped=${after?.k}/${after?.n} label=${after?.label}` +
+            ` reportsOffered ${offeredUnscoped}→${offeredScoped} narrowed=${narrowed}`,
+        ];
+      },
+    },
+    {
+      row: "screener states it is fixture data",
+      setup: () => screener("ib-breakout"),
+      check: async () => {
+        const t = await evaluate(
+          `document.querySelector('[data-apollo-id="screener-fixture-notice"]')?.innerText ?? ''`,
+        );
+        const ok = /fixture data/i.test(t) && /not a live event ledger/i.test(t);
+        return [ok, ok ? "fixture status stated on screen" : `notice missing or silent: "${t}"`];
       },
     },
   ];

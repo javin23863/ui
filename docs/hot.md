@@ -12,6 +12,79 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
+## ▶ §16 Screeners — on `feat/screeners`, not yet merged
+
+| | |
+|---|---|
+| Branch | `feat/screeners`, worktree `C:\tmp\ui-screeners` |
+| Spec | `docs/UI-NEXT-INCREMENT.md` §16 · contract `Documents/tradercockpit/research/edgeful-concept-behavior-atlas-spec-2026-08-02.md` |
+| Card | `consumer.ui-screeners` — **active** |
+| plan-warden | ON PLAN WITH CORRECTIONS — five blocking drops, all applied |
+| Gates | sweep **32/32**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, parity regenerated |
+
+Reachable from the rail's `Screener` button. Screens **conditions, not instruments**: how a named
+setup has resolved before, for this asset in this session — and it refuses to state a rate it
+cannot support.
+
+**What the warden caught before a line was written, and what it saved.** I had the five refusals
+but had dropped five *positive* render rules from the Atlas table, each a MUST in the contract:
+censored/unresolved/excluded shown **separately**; all classes **plus the total**, with a derived
+class carrying its exact expression; division by zero rendering **the returned reason**, not a
+dash; the independent-unit rule **named** beside raw-vs-independent n; and a statement of whether
+the report **conditions on eventual completion**. A refusal is not the same thing as the positive
+rule it guards, and I had been treating them as interchangeable.
+
+**It also set a scope ceiling that stopped an engine being built in the front end.** The commission
+is the seven Atlas table rows, the layout, and the five refusals — **not** the ten evidence states,
+**not** §15's thirteen human-readable card lines, **not** §17's fifteen typed errors, and **not**
+computing Wilson intervals. I had read all four and was ready to render them. §15's *prohibited
+wording* list binds the copy but is not a feature.
+
+### The design decisions worth carrying
+
+- **`Quantity` is a type, not a convention.** `{value}` or `{value: null, reason}`. Atlas §11.2 says
+  an undefined quotient returns null *with a reason* and the UI renders the reason — modelled as a
+  type there is nowhere to put a dash, so the rule cannot be forgotten at one call site. The
+  `zero-baseline` fixture exists solely to make that rule **reachable**: without it the code was
+  real and unobservable.
+- **One call carries the whole claim.** `classRowsFor` returns rate, `k`, `n` *and* the denominator
+  label in one object. `83.06%`, `103 out of 124` and `eligible_resolved_sessions_n` are one
+  sentence; §15 bought that lesson across eight findings and this is the same defect class.
+- **Chart-linked mode filters which reports are OFFERED; it never rescales one.** Recomputing a
+  cohort for a new scope is the engine's job, and a panel that quietly rescaled someone else's
+  counts would be inventing a result.
+- **`ClassFrequencyBars`, not `CategoryBars`.** The existing bars are zero-centred and paint
+  profit/loss, which would colour `no break` red as though a class of a distribution were a loss.
+  §2d already rules regimes are not a categorical palette; outcome classes are the same. Uses the
+  gate-validated `--color-series-*` slots, falls back to one colour above three classes rather than
+  inventing an unvalidated hex.
+- **A rate is not a delta.** Signs are opt-in: only the lifts carry one. `Baseline rate +71.40%`
+  read as a change from something and was wrong on the first render.
+- **The refusing reports are real entries in the selector**, not a debug switch — same reason
+  `Trades Analysis` carries its run profiles. A refusal nobody can reach is a claim, not a gate.
+
+### The case the whole surface exists for
+
+Evidence frame 03 shows `95.38%` — "single break before 10:30" — over **65 days that eventually
+produced a single break**, and the video says "price breaks by 10:30 95% of the time". Atlas §15
+lists that exact sentence as prohibited wording and §8 is why. The `orb-timing` report renders the
+same 62/65 with `eventual_single_break_sessions_n` named on the card and a notice above every
+number stating what the denominator is. The sweep row also asserts the panel contains no
+forecast wording.
+
+**Proven by mutation**, twelve new rows in two batches: disabling `refusalFor` flipped exactly the
+five refusal rows and left 27 green; breaking the six render rules plus the chart-linked scope
+flipped exactly those seven and left 25 green.
+
+> **One of my own assertions was decorative and the mutation is what exposed it.** The
+> divide-by-zero row also grepped the whole panel for a stray dash or `Infinity`; when the value
+> really was `Infinity` that clause reported `false`, because a whole-text regex could not tell the
+> label from the value. The row still failed on its other clause, which is how it hid. It now reads
+> the `screener-relative-lift` cell directly and was re-proven against a dash. **A clause that has
+> never been watched fail is not a check, even when the row around it works.**
+
+---
+
 ## §15 Strategy Library — MERGED TO MAIN 2026-08-05
 
 | | |
@@ -212,7 +285,7 @@ npx tsc -b                # clean
 npm run build             # clean
 node scripts/parity.mjs   # regenerates all seven parity sheets
 node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
-node scripts/sweep.mjs    # empty-state sweep, 20 rows, asserts and exits non-zero
+node scripts/sweep.mjs    # empty-state sweep, 32 rows, asserts and exits non-zero
 ```
 
 The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:

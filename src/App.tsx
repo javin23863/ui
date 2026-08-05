@@ -3,11 +3,18 @@ import { ChevronDown, Clock, Hexagon, PencilLine, Radar, Sparkles, User } from "
 import ChatPane, { type Turn } from "./components/ChatPane";
 import Workspace from "./components/Workspace";
 import StrategyLibrary from "./components/StrategyLibrary";
+import Screener from "./components/Screener";
 import ApolloOrb from "./components/ApolloOrb";
 import { ApolloContext, type ApolloState } from "./components/useApollo";
 import { captureCurrentRun, type Profile, type SavedRun, SEEDED_RUNS } from "./runs";
 import { summary } from "./fixtures/market";
 import { cx } from "./ui";
+
+/** Rail entries that open a pane. The others are not built and stay inert. */
+const RAIL_PANE: Record<string, "library" | "screener" | undefined> = {
+  History: "library",
+  Screener: "screener",
+};
 
 const RAIL = [
   { icon: PencilLine, label: "New chat" },
@@ -52,7 +59,9 @@ export default function App() {
   // library says on screen that these are lost on reload; a save that
   // evaporates SILENTLY is the failure, not one that evaporates.
   const [runs, setRuns] = useState<SavedRun[]>(SEEDED ? SEEDED_RUNS : []);
-  const [library, setLibrary] = useState(false);
+  // Which pane the right-hand side is showing. The rail drives it; "workspace"
+  // is the chart/code/backtest surface.
+  const [pane, setPane] = useState<"workspace" | "library" | "screener">("workspace");
 
   // Identity includes the PROFILE. The same strategy, instrument and timeframe
   // under a different profile is a different run with different trades and
@@ -96,11 +105,15 @@ export default function App() {
             data-apollo-id={`rail-${r.label.toLowerCase().replace(/\s+/g, "-")}`}
             aria-label={r.label}
             title={r.label}
-            aria-pressed={r.label === "History" ? library : undefined}
-            onClick={r.label === "History" ? () => setLibrary((l) => !l) : undefined}
+            aria-pressed={RAIL_PANE[r.label] ? pane === RAIL_PANE[r.label] : undefined}
+            onClick={
+              RAIL_PANE[r.label]
+                ? () => setPane((p) => (p === RAIL_PANE[r.label] ? "workspace" : RAIL_PANE[r.label]!))
+                : undefined
+            }
             className={cx(
               "grid h-11 w-full place-items-center transition-colors hover:text-text-primary",
-              r.label === "History" && library ? "text-accent" : "text-icon-idle",
+              RAIL_PANE[r.label] && pane === RAIL_PANE[r.label] ? "text-accent" : "text-icon-idle",
             )}
           >
             <r.icon size={17} />
@@ -137,7 +150,11 @@ export default function App() {
           </div>
           <div className={cx("w-px shrink-0 bg-border", collapsed && "hidden")} />
           <div className="min-h-0 min-w-0 flex-1 pl-4">
-            {library ? (
+            {pane === "screener" ? (
+              <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">
+                <Screener />
+              </section>
+            ) : pane === "library" ? (
               <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">
                 <StrategyLibrary
                   runs={runs}
