@@ -244,9 +244,26 @@ function regimeAt(px: number, slope: number, range: number): string {
   return "Range";
 }
 
-export const equity = trades.map((t) => ({ time: t.entryTime, value: t.cum, n: t.n, side: t.side }));
+/**
+ * The equity path of a given set of rows. Cumulative net is RECOMPUTED rather
+ * than read from `t.cum`, because a run presented without costs accumulates its
+ * gross results — a curve ending at the cost-deducted total underneath a
+ * cost-free Net Profit is the same contradiction in chart form.
+ */
+export const equityFor = (rows: typeof trades) => {
+  let cum = 0;
+  return rows.map((t) => {
+    cum = round2(cum + t.net);
+    return { time: t.entryTime, value: cum, n: t.n, side: t.side };
+  });
+};
 
-export const dailyPnl = trades.map((t) => ({ time: t.entryTime, value: t.net }));
+export const dailyPnlFor = (rows: typeof trades) => rows.map((t) => ({ time: t.entryTime, value: t.net }));
+
+/** The full run as executed — what the dock and the chart pane show. */
+export const equity = equityFor(trades);
+
+export const dailyPnl = dailyPnlFor(trades);
 
 // Derived from the trades, never written by hand. Hand-entered weekday totals
 // summed to 4,270.70 against a net profit of 1,813.27 — an aggregate that
@@ -260,10 +277,11 @@ export const startingCapital = 25000;
 
 export type SideFilter = "All" | "Long" | "Short";
 
-const bySide = (side: SideFilter) => (side === "All" ? trades : trades.filter((t) => t.side === side));
+const bySide = (side: SideFilter, from: typeof trades = trades) =>
+  side === "All" ? from : from.filter((t) => t.side === side);
 
-export function weekdayPnlFor(side: SideFilter = "All") {
-  const rows = bySide(side);
+export function weekdayPnlFor(side: SideFilter = "All", from: typeof trades = trades) {
+  const rows = bySide(side, from);
   return WEEKDAYS.map((label, day) => ({
     label,
     value: round2(

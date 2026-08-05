@@ -111,6 +111,20 @@ reads `IS=2555.22 + OOS=-555.52 = 1999.70 vs Net Profit 2587.7 → DISAGREE`.
 > answer to "which rows is this run". If a sixth surface ever needs rows, that is the call, and a
 > new `rowsFor`/`trades` reference in a panel should be read as a bug on sight.
 
+**Swept the rest of the class rather than waiting for round 5.** The Performance tab's equity curve,
+Net Daily PNL bars and weekday card all read the module-level full-run consts, so under `no-costs`
+the curve ended at the cost-deducted total directly beneath a cost-free Net Profit. `equityFor`,
+`dailyPnlFor` and `weekdayPnlFor` now take rows, and `summaryKpis` takes rows instead of a boolean,
+so the caller says which run it is describing. `equityFor` **recomputes** cumulative net rather than
+reading the precomputed `t.cum`, which is what a cost-free presentation requires.
+
+> **OPEN, pre-existing, NOT fixed here — needs its own card.** The `thin` profile slices
+> `Trades Analysis` to 11 trades, but the **Trades Log still lists all 47** and the Performance tab
+> still totals all 47. Only the cost treatment was unified in this PR; the row-count slicing was
+> deliberately left alone, because slicing the Performance tab on its own would have traded a cost
+> inconsistency for a row-count one against the log sitting next to it. Fixing it properly means
+> threading the profile's rows through `TradesLog` too, which is §8 work, not §15.
+
 > **Do not read "this profile is only a demo switch" as permission to leave it inconsistent.** The
 > profile switch is what makes every refusal in this build demonstrable. A run profile that two
 > panels disagree about is a broken instrument, and it stayed broken because nothing asserted

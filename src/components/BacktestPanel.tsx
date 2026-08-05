@@ -2,17 +2,18 @@ import { useState } from "react";
 import { Minimize2, Star } from "lucide-react";
 import { CategoryBars, DailyPnl, EquityCurve } from "./charts";
 import { AssetBadge, Card, cx, KpiStrip, Legend, Signed } from "../ui";
-import { asPresented, dailyPnl, equity, metricsFor, type SideFilter, statsFor, summary, trades, weekdayPnlFor } from "../fixtures/market";
-import type { Profile } from "../runs";
+import { asPresented, dailyPnlFor, equityFor, metricsFor, type SideFilter, statsFor, summary, trades, weekdayPnlFor } from "../fixtures/market";
+import { costsModelledFor, type Profile } from "../runs";
 import TradesAnalysis from "./TradesAnalysis";
 import TradesLog from "./TradesLog";
 
 const TABS = ["Performance", "Trades Analysis", "Trades Log"] as const;
 export type Tab = (typeof TABS)[number];
 
-/** `costsModelled` defaults true: the dock always shows the run as executed. */
-export function summaryKpis(costsModelled = true) {
-  const s = statsFor(asPresented(trades, costsModelled));
+/** Takes ROWS, so the caller decides which run this describes. Defaults to the
+ *  full ledger as executed, which is what the collapsed dock shows. */
+export function summaryKpis(rows: typeof trades = trades) {
+  const s = statsFor(rows);
   return [
     { label: "Net Profit", value: <Signed value={s.netProfit} unit="USD" /> },
     { label: "Trades", value: <span className="tnum">{s.trades}</span> },
@@ -103,7 +104,7 @@ export default function BacktestPanel({
       <div className="shrink-0 border-b border-border" />
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
-        {tab === "Performance" && <Performance costsModelled={profile !== "no-costs"} />}
+        {tab === "Performance" && <Performance profile={profile} />}
         {tab === "Trades Analysis" && <TradesAnalysis profile={profile} setProfile={setProfile} />}
         {tab === "Trades Log" && (
           <TradesLog costsModelled={profile !== "no-costs"} regimesTagged={profile !== "no-regimes"} onShowOnChart={onShowOnChart} />
@@ -113,27 +114,38 @@ export default function BacktestPanel({
   );
 }
 
-function Performance({ costsModelled }: { costsModelled: boolean }) {
+function Performance({ profile }: { profile: Profile }) {
   // Two independent slices — the weekday card and the metrics table each carry
   // their own control in the reference, so neither drives the other.
   const [metricsSide, setMetricsSide] = useState<SideFilter>("All");
   const [weekdaySide, setWeekdaySide] = useState<SideFilter>("All");
+  // Every figure on this tab — curve, bars, strip and table — reads the SAME
+  // rows under the SAME cost treatment. The charts used to read the module-level
+  // full-run consts, so under `no-costs` the curve ended at the cost-deducted
+  // total directly under a cost-free Net Profit.
+  //
+  // Deliberately the full ledger, not `presentedRowsFor(profile)`: this tab has
+  // never been sliced by the `thin` profile and the Trades Log is not either, so
+  // slicing only this one would trade a cost inconsistency for a row-count one.
+  // That gap is real and pre-existing — see hot.md — and needs its own card.
+  const costsModelled = costsModelledFor(profile);
+  const rows = asPresented(trades, costsModelled);
 
   return (
     <>
       <div className="pt-2">
-        <EquityCurve data={equity} height={255} apolloId="equity-expanded" />
+        <EquityCurve data={equityFor(rows)} height={255} apolloId="equity-expanded" />
       </div>
-      <KpiStrip items={summaryKpis(costsModelled)} />
+      <KpiStrip items={summaryKpis(rows)} />
 
       <h2 className="mt-6 mb-3 text-[16px] font-semibold">Performance</h2>
       <div className="grid gap-4" style={{ gridTemplateColumns: "64fr 36fr" }}>
         <Card title="Net Daily PNL (USD)">
-          <DailyPnl data={dailyPnl} />
+          <DailyPnl data={dailyPnlFor(rows)} />
           <Legend items={[{ label: "Profit", color: "var(--color-profit)" }, { label: "Loss", color: "var(--color-loss)" }]} />
         </Card>
         <Card title="Weekday Performance (USD)">
-          <CategoryBars data={weekdayPnlFor(weekdaySide)} yLabel="Weekday P&L" apolloId="weekday-performance" />
+          <CategoryBars data={weekdayPnlFor(weekdaySide, rows)} yLabel="Weekday P&L" apolloId="weekday-performance" />
           <Legend items={[{ label: "Profit", color: "var(--color-profit)" }, { label: "Loss", color: "var(--color-loss)" }]} />
           {/* The reference carries a control-shaped "All" under this card's
               legend and nothing at the same spot under Net Daily PNL, so the
