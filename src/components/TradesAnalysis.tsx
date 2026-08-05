@@ -1,21 +1,16 @@
 import { useMemo } from "react";
 import { CostCurve, DurationHistogram, MaeMfeScatter, RDistribution } from "./charts";
 import { Card, Chip, cx, KpiStrip, Refusal, Signed } from "../ui";
-import { trades } from "../fixtures/market";
+import { factsForProfile, type Profile, PROFILES, rowsFor, warningsFor } from "../runs";
 
 // §8c — OUR tab. The reference never opens it, so nothing here is parity.
 // Design rule: every panel must be able to say no. The `profile` switch below
 // exists so that refusal is demonstrable, not just claimed — it is the P6
 // empty-state sweep made interactive.
-export type Profile = "full" | "no-costs" | "no-holdout" | "thin" | "no-regimes";
-
-const PROFILES: { id: Profile; label: string }[] = [
-  { id: "full", label: "Full run" },
-  { id: "no-costs", label: "Costs not modelled" },
-  { id: "no-holdout", label: "No holdout" },
-  { id: "thin", label: "Thin sample" },
-  { id: "no-regimes", label: "Untagged regimes" },
-];
+//
+// The adequacy thresholds used to be written out here. They now live in
+// `src/runs.ts` and are read by both this panel and the §15 library card, so the
+// two surfaces cannot come to different conclusions about the same run.
 
 /**
  * The run profile describes the RUN, not this tab, so it is owned by the panel
@@ -32,21 +27,20 @@ export default function TradesAnalysis({
   setProfile: (p: Profile) => void;
 }) {
 
-  const rows = useMemo(() => (profile === "thin" ? trades.slice(0, 11) : trades), [profile]);
-  const costsModelled = profile !== "no-costs";
+  const rows = useMemo(() => rowsFor(profile), [profile]);
   // Declared by the run AND actually populated. The thin-sample profile declares
   // a holdout that no trade lands in, and the panel rendered 0.00 / 0.0% / a
   // −54.5 pp delta against it — reporting that the strategy scored zero out of
   // sample when the truth is it was never tested there. A guard that reads the
-  // declaration instead of the data cannot catch that.
-  const declaresHoldout = profile !== "no-holdout";
+  // declaration instead of the data cannot catch that, which is why `holdout`
+  // carries three states rather than a boolean.
+  const facts = factsForProfile(profile);
+  const flagged = new Set(warningsFor(facts).map((w) => w.id));
+  const costsModelled = facts.costsModelled;
   const hasRegimes = profile !== "no-regimes";
 
-  const net = rows.reduce((s, t) => s + t.net, 0);
-  const months = 37;
-  const perMonth = rows.length / (profile === "thin" ? 12 : months);
-  const top3 = [...rows].sort((a, b) => b.net - a.net).slice(0, 3).reduce((s, t) => s + t.net, 0);
-  const top3Share = net > 0 ? (top3 / net) * 100 : 0;
+  const perMonth = facts.perMonth;
+  const top3Share = facts.top3Share;
 
   const modelledCost = 14.2;
   const costPoints = Array.from({ length: 25 }, (_, i) => {
@@ -66,7 +60,7 @@ export default function TradesAnalysis({
   };
   const isS = stat(is);
   const oosS = stat(oos);
-  const hasHoldout = declaresHoldout && oosS.n > 0 && isS.n > 0;
+  const hasHoldout = facts.holdout === "ok";
 
   const regimes = useMemo(() => {
     const map = new Map<string, typeof rows>();
@@ -76,8 +70,6 @@ export default function TradesAnalysis({
     }
     return [...map.entries()].map(([name, ts]) => ({ name, ...stat(ts) }));
   }, [rows]);
-
-  const warn = (bad: boolean, label: string) => (bad ? <Chip tone="warning">{label}</Chip> : null);
 
   return (
     <div className="pt-4">
@@ -100,17 +92,24 @@ export default function TradesAnalysis({
 
       <KpiStrip
         items={[
-          { label: "Trades", value: <span className="tnum">{rows.length}</span>, sub: rows.length < 30 ? "thin sample" : undefined },
-          { label: "Trades / Month", value: <span className="tnum">{perMonth.toFixed(2)}</span>, sub: perMonth < 2 ? "sparse" : undefined },
-          { label: "Top-3 Trade Share", value: <span className={cx("tnum", top3Share > 60 ? "text-loss" : top3Share > 40 ? "text-warning" : "")}>{top3Share.toFixed(0)}%</span> },
+          { label: "Trades", value: <span className="tnum">{rows.length}</span>, sub: flagged.has("thin") ? "thin sample" : undefined },
+          { label: "Trades / Month", value: <span className="tnum">{perMonth.toFixed(2)}</span>, sub: flagged.has("sparse") ? "sparse" : undefined },
+          { label: "Top-3 Trade Share", value: <span className={cx("tnum", top3Share > 60 ? "text-loss" : flagged.has("top3") ? "text-warning" : "")}>{top3Share.toFixed(0)}%</span> },
           { label: "Longest Flat Period", value: <span className="tnum">94 days</span> },
           { label: "Exposure", value: <span className="tnum">18%</span> },
         ]}
       />
+      {/* The two remaining §15b signals — costs and holdout — are full-card
+          refusals on this panel rather than chips, so only these three render
+          here. All five come from the same call. */}
       <div className="mb-5 flex gap-2 pt-2">
-        {warn(rows.length < 30, "Thin sample")}
-        {warn(perMonth < 2, "Sparse")}
-        {warn(top3Share > 40, `Top-3 carries ${top3Share.toFixed(0)}% of net`)}
+        {warningsFor(facts)
+          .filter((w) => w.id === "thin" || w.id === "sparse" || w.id === "top3")
+          .map((w) => (
+            <Chip key={w.id} tone="warning">
+              {w.label}
+            </Chip>
+          ))}
       </div>
 
       <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr" }}>
@@ -197,7 +196,7 @@ export default function TradesAnalysis({
             </>
           ) : (
             <Refusal>
-              {declaresHoldout
+              {facts.holdout === "declared-empty"
                 ? `A holdout is declared but no trade falls in it — ${isS.n} in-sample, ${oosS.n} out-of-sample. There is no out-of-sample result to compare against, which is not the same as one that came out flat.`
                 : "No out-of-sample period declared for this run. A split invented at display time is not a holdout."}
             </Refusal>

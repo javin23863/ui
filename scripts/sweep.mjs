@@ -126,6 +126,18 @@ try {
 
   const bodyText = () => evaluate("document.body.innerText");
 
+  /** Open the §15 library. `seeded` false gives a genuinely empty one. */
+  const library = async (seeded = true) => {
+    await load(seeded ? "?seed=1" : "");
+    await click("rail-history");
+  };
+
+  /** data-apollo-id of the first card in the list, in whatever order is active. */
+  const firstCard = () =>
+    evaluate(
+      `(() => { const el = document.querySelector('[data-apollo-id^="library-card-"]'); return el ? el.getAttribute('data-apollo-id') : null; })()`,
+    );
+
   const DATA_ROWS = [
     {
       // §11 declares TWO behaviours for this one input: the cost-sensitivity
@@ -243,6 +255,104 @@ try {
           bad.length === 0
             ? `${thinRows.length} thin row(s), each muted AND carrying a row-local Thin marker`
             : `${bad.length} thin row(s) missing muted styling or the row-local marker`,
+        ];
+      },
+    },
+    // ------------------------------------------------------------- §15 library
+
+    {
+      // The default state. Nothing is saved, so the panel must explain what a
+      // save keeps rather than showing an example run that was never run.
+      row: "empty library explains a save",
+      setup: () => library(false),
+      check: async () => {
+        const r = await evaluate(`(() => ({
+          cards: document.querySelectorAll('[data-apollo-id^="library-card-"]').length,
+          text: document.querySelector('[data-apollo-id="strategy-library"]')?.innerText ?? '',
+        }))()`);
+        const explains = /No saved runs yet/i.test(r.text) && /instrument, timeframe, date range/i.test(r.text);
+        return [
+          r.cards === 0 && explains,
+          `cards=${r.cards} explainsWhatASaveKeeps=${explains}`,
+        ];
+      },
+    },
+    {
+      // The harder refusal §15 names: a saved run whose data is gone must say so
+      // and must NOT re-render its headline against whatever is loaded now.
+      row: "saved run without its data",
+      setup: () => library(),
+      check: async () => {
+        const r = await evaluate(`(() => {
+          const el = document.querySelector('[data-apollo-id="library-card-run-vwap-fade"]');
+          if (!el) return { card: false };
+          const t = el.innerText;
+          return {
+            card: true,
+            refuses: /no longer loaded/i.test(t),
+            numbers: /Win rate|Profit factor/i.test(t),
+            chips: !!el.querySelector('[data-apollo-id="library-chips-run-vwap-fade"]'),
+          };
+        })()`);
+        if (!r.card) return [false, "the unavailable-data run is not in the library"];
+        return [
+          r.refuses && !r.numbers && !r.chips,
+          `saysUnavailable=${r.refuses} rendersNumbersAnyway=${r.numbers} rendersChips=${r.chips}`,
+        ];
+      },
+    },
+    {
+      // §15b's whole argument. Asserted relatively so it can actually fail: the
+      // default order must NOT lead with the biggest number, and selecting
+      // "Highest return" must show that it would have.
+      row: "default sort is not by return",
+      setup: () => library(),
+      check: async () => {
+        const first = await firstCard();
+        const control = await evaluate(
+          `document.querySelector('[data-apollo-id="library-sort-trust"]')?.getAttribute('aria-pressed')`,
+        );
+        const named = await evaluate(
+          `document.querySelector('[data-apollo-id="library-sort-trust"]')?.textContent?.trim()`,
+        );
+        await click("library-sort-return");
+        const byReturn = await firstCard();
+        const differs = first !== byReturn;
+        return [
+          control === "true" && named === "Most trustworthy" && differs,
+          `default=${control} label="${named}" trustFirst=${first} returnFirst=${byReturn} ordersDiffer=${differs}`,
+        ];
+      },
+    },
+    {
+      // A save that evaporates on reload is only acceptable while it says so.
+      row: "library states saves are not kept",
+      setup: () => library(),
+      check: async () => {
+        const t = await evaluate(
+          `document.querySelector('[data-apollo-id="library-storage-notice"]')?.innerText ?? ''`,
+        );
+        // Both clauses, so dropping either one fails: that saves are lost, and
+        // that nothing is kept beyond the tab.
+        const ok = /lost on reload/i.test(t) && /nothing is stored/i.test(t);
+        return [ok, ok ? "storage limit stated on screen" : `notice missing or silent: "${t}"`];
+      },
+    },
+    {
+      // §15c — abandoned runs leave the default view but are never destroyed.
+      row: "archived run is kept, not deleted",
+      setup: () => library(),
+      check: async () => {
+        const active = await evaluate(
+          `!!document.querySelector('[data-apollo-id="library-card-run-orb-eurusd"]')`,
+        );
+        await click("library-filter-archived");
+        const archived = await evaluate(
+          `!!document.querySelector('[data-apollo-id="library-card-run-orb-eurusd"]')`,
+        );
+        return [
+          !active && archived,
+          `inActiveView=${active} inArchivedView=${archived}`,
         ];
       },
     },

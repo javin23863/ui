@@ -7,6 +7,7 @@ import { EquityCurve } from "./charts";
 import SettingsModal from "./SettingsModal";
 import TickerPicker from "./TickerPicker";
 import { AssetBadge, cx, KpiStrip } from "../ui";
+import type { Profile } from "../runs";
 import { equity, pineSource, RUN_SYMBOL, RUN_TIMEFRAME, summary } from "../fixtures/market";
 
 type View = "chart" | "code" | "backtest";
@@ -18,11 +19,15 @@ export default function Workspace({
   hasStrategy,
   onCollapseChat,
   chatCollapsed,
+  onSaveRun,
+  runSaved,
 }: {
   title: string;
   hasStrategy: boolean;
   onCollapseChat: () => void;
   chatCollapsed: boolean;
+  onSaveRun?: (profile: Profile) => void;
+  runSaved?: boolean;
 }) {
   const [view, setView] = useState<View>("chart");
   const [settings, setSettings] = useState(false);
@@ -139,6 +144,8 @@ export default function Workspace({
       {view === "backtest" ? (
         <BacktestPanel
           onCollapse={() => setView("chart")}
+          onSaveRun={onSaveRun}
+          runSaved={runSaved}
           onShowOnChart={(t) => {
             // A trade only exists on the chart it was taken on, so go there
             // rather than pointing at its timestamps on whatever is loaded.

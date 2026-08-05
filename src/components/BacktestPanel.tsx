@@ -3,7 +3,8 @@ import { Minimize2, Star } from "lucide-react";
 import { CategoryBars, DailyPnl, EquityCurve } from "./charts";
 import { AssetBadge, Card, cx, KpiStrip, Legend, Signed } from "../ui";
 import { dailyPnl, equity, metricsFor, type SideFilter, summary, weekdayPnlFor } from "../fixtures/market";
-import TradesAnalysis, { type Profile } from "./TradesAnalysis";
+import type { Profile } from "../runs";
+import TradesAnalysis from "./TradesAnalysis";
 import TradesLog from "./TradesLog";
 
 const TABS = ["Performance", "Trades Analysis", "Trades Log"] as const;
@@ -33,9 +34,15 @@ export function summaryKpis() {
 export default function BacktestPanel({
   onCollapse,
   onShowOnChart,
+  onSaveRun,
+  runSaved = false,
 }: {
   onCollapse: () => void;
   onShowOnChart?: (t: { n: number; entryTime: number; exitTime: number }) => void;
+  /** §15a — saves the run AS SHOWN, so the entry's numbers and its adequacy
+   *  chips come from the same profile the reader is looking at. */
+  onSaveRun?: (profile: Profile) => void;
+  runSaved?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("Performance");
   // Owned here so every tab sees the same run (§11 empty-state sweep).
@@ -51,9 +58,17 @@ export default function BacktestPanel({
         <span className="flex h-7 items-center rounded-md bg-bg-panel px-2 text-[13px] text-text-muted">{summary.timeframe}</span>
         <h2 className="ml-1 text-[13px] font-semibold">Backtest Results</h2>
         <span className="text-[12px] text-text-muted">{summary.rangeLabel}</span>
-        <button data-apollo-id="favourite-run" aria-label="Favourite" className="text-text-muted hover:text-text-primary">
-          <Star size={13} />
+        <button
+          data-apollo-id="favourite-run"
+          aria-label={runSaved ? "Saved to library" : "Save run to library"}
+          title={runSaved ? "Saved to library" : "Save run to library"}
+          aria-pressed={runSaved}
+          onClick={() => onSaveRun?.(profile)}
+          className={cx(runSaved ? "text-accent" : "text-text-muted hover:text-text-primary")}
+        >
+          <Star size={13} fill={runSaved ? "currentColor" : "none"} />
         </button>
+        {runSaved && <span className="text-[11px] text-text-muted">Saved</span>}
         <button
           data-apollo-id="collapse-backtest"
           aria-label="Collapse"
