@@ -20,7 +20,8 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Spec | `docs/UI-NEXT-INCREMENT.md` §18, recorded BEFORE code |
 | Card | `consumer.ui-setup-screener` — **active** |
 | plan-warden | ON PLAN WITH CORRECTIONS — five blocking, all applied |
-| Gates | sweep **39/39**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, **all seven parity sheets regenerated** |
+| Gates | sweep **40/40**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, **all seven parity sheets regenerated** |
+| Greptile | round 1 found **one P1, real, fixed** — the evidence handoff was inert |
 
 §16 answered *"what usually happens after this setup?"*. It could not answer *"is that setup
 happening?"* — so the cockpit held evidence and no trigger. §18 splits the surface in two.
@@ -59,7 +60,17 @@ the observation.
 
 ### The rule that ties the two tabs together
 
-**A matched setup either links to its `Conditional Rates` evidence or states that it has none.** On
+**A matched setup either links to its `Conditional Rates` evidence or states that it has none.**
+
+> **That sentence was true of the docs and false of the code, and Greptile caught it.** The support
+> rendered as nested `<span>` text: not focusable, not clickable, and opening the rates panel by
+> hand landed on its default report. **The capability was asserted in prose and absent from the
+> build** — the label-without-its-data defect, one level up, in the documentation describing the
+> feature. It is a real control now, and the row `evidence handoff opens that report` asserts the
+> panel lands on the CITED report; mutated, it lands on `rates-report-ib-breakout`, which is exactly
+> what the reviewer observed.
+
+On
 screen the supported 1h matches render in accent and name their report; the unsupported 4h match
 renders in warning and reads *"no supporting history at this timeframe"*, and the header counts it:
 `3 matched · 1 with no supporting history`. A trigger a trader cannot check is the thing this build
@@ -370,7 +381,7 @@ npx tsc -b                # clean
 npm run build             # clean
 node scripts/parity.mjs   # regenerates all seven parity sheets
 node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
-node scripts/sweep.mjs    # empty-state sweep, 39 rows, asserts and exits non-zero
+node scripts/sweep.mjs    # empty-state sweep, 40 rows, asserts and exits non-zero
 ```
 
 The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:

@@ -24,7 +24,18 @@ import {
  * notice is not dismissible — an actionable page that looks live while showing
  * stale state is the most misleading surface this build could ship.
  */
-export default function SetupScreener({ symbol, runs }: { symbol: string; runs: SavedRun[] }) {
+export default function SetupScreener({
+  symbol,
+  runs,
+  onOpenEvidence,
+}: {
+  symbol: string;
+  runs: SavedRun[];
+  /** Opens the Conditional Rates panel ON the cited report. The support used to
+   *  be inert text while the docs claimed the cell "links to" its evidence — a
+   *  capability asserted in prose and absent from the code. */
+  onOpenEvidence: (reportId: string) => void;
+}) {
   const rows = useMemo(() => screenRowsFor(symbol, runs), [symbol, runs]);
   const matches = matchCount(rows);
   const unsupported = unsupportedMatchCount(rows);
@@ -99,7 +110,7 @@ export default function SetupScreener({ symbol, runs }: { symbol: string; runs: 
             </thead>
             <tbody>
               {rows.map((r) => (
-                <Row key={r.runId} row={r} />
+                <Row key={r.runId} row={r} onOpenEvidence={onOpenEvidence} />
               ))}
             </tbody>
           </table>
@@ -116,7 +127,7 @@ export default function SetupScreener({ symbol, runs }: { symbol: string; runs: 
   );
 }
 
-function Row({ row }: { row: ScreenRow }) {
+function Row({ row, onOpenEvidence }: { row: ScreenRow; onOpenEvidence: (id: string) => void }) {
   return (
     <tr className="border-t border-border align-top">
       <td className="py-2 pr-3">
@@ -128,14 +139,14 @@ function Row({ row }: { row: ScreenRow }) {
       </td>
       {row.cells.map((c) => (
         <td key={c.timeframe} className="py-2 text-center" data-apollo-id={`screener-cell-${row.runId}-${c.timeframe}`}>
-          <CellView cell={c} />
+          <CellView cell={c} onOpenEvidence={onOpenEvidence} />
         </td>
       ))}
     </tr>
   );
 }
 
-function CellView({ cell }: { cell: ScreenCell }) {
+function CellView({ cell, onOpenEvidence }: { cell: ScreenCell; onOpenEvidence: (id: string) => void }) {
   if (cell.state === "not-evaluated")
     return (
       <span className="text-[11px] text-text-muted" title={cell.reason ?? undefined}>
@@ -166,9 +177,14 @@ function CellView({ cell }: { cell: ScreenCell }) {
       <span className="text-[10px] text-text-muted">{cell.evaluatedAt}</span>
       {cell.note && <span className="text-[10px] text-text-muted">{cell.note}</span>}
       {cell.supportReportId ? (
-        <span className="text-[10px] text-text-muted">
-          history: <span className="font-mono">{cell.supportReportId}</span>
-        </span>
+        <button
+          data-apollo-id={`screener-evidence-${cell.supportReportId}`}
+          onClick={() => onOpenEvidence(cell.supportReportId!)}
+          title="Open this setup's conditional rates"
+          className="font-mono text-[10px] text-accent underline decoration-dotted underline-offset-2 hover:text-text-primary"
+        >
+          history: {cell.supportReportId}
+        </button>
       ) : (
         // The rule that ties the two tabs together. A trigger with nothing
         // behind it is labelled, not quietly shown like the supported ones.

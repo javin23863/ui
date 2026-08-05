@@ -71,6 +71,8 @@ export default function App() {
   // Which pane the right-hand side is showing. The rail drives it; "workspace"
   // is the chart/code/backtest surface.
   const [pane, setPane] = useState<Pane>("workspace");
+  // Which report the rates panel should open on when the Screener hands off.
+  const [evidenceReport, setEvidenceReport] = useState<string | null>(null);
   // The chart the cockpit is showing. Owned here because two panes read it: the
   // workspace renders it, and the Screener's chart-linked scope claims to follow
   // it. Held in Workspace, that claim was a label over a constant.
@@ -166,11 +168,18 @@ export default function App() {
           <div className="min-h-0 min-w-0 flex-1 pl-4">
             {pane === "screener" ? (
               <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">
-                <SetupScreener symbol={symbol} runs={runs} />
+                <SetupScreener
+                  symbol={symbol}
+                  runs={runs}
+                  onOpenEvidence={(id) => {
+                    setEvidenceReport(id);
+                    setPane("rates");
+                  }}
+                />
               </section>
             ) : pane === "rates" ? (
               <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">
-                <ConditionalRates symbol={symbol} timeframe={timeframe} />
+                <ConditionalRates symbol={symbol} timeframe={timeframe} reportId={evidenceReport} />
               </section>
             ) : pane === "library" ? (
               <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-bg-panel">

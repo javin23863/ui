@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Radar } from "lucide-react";
 import { ClassFrequencyBars } from "./charts";
 import { Card, Chip, cx, Refusal } from "../ui";
@@ -27,8 +27,22 @@ import {
  * the Atlas contract prohibits that wording until calibrated status is earned,
  * and the navigation is where every screen inherits its claim from.
  */
-export default function ConditionalRates({ symbol, timeframe }: { symbol: string; timeframe: string }) {
-  const [id, setId] = useState(REPORTS[0].id);
+export default function ConditionalRates({
+  symbol,
+  timeframe,
+  reportId,
+}: {
+  symbol: string;
+  timeframe: string;
+  /** Set when the Screener hands off to a specific report's evidence. */
+  reportId?: string | null;
+}) {
+  const [id, setId] = useState(reportId ?? REPORTS[0].id);
+  // Follow a later handoff too — arriving twice on different reports must not
+  // leave the panel showing the first one.
+  useEffect(() => {
+    if (reportId) setId(reportId);
+  }, [reportId]);
   const [chartLinked, setChartLinked] = useState(false);
 
   // Chart-linked mode filters which reports are OFFERED. It never transforms a

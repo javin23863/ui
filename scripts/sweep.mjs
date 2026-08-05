@@ -917,6 +917,30 @@ try {
       },
     },
     {
+      // The docs said a matched setup "links to" its evidence while the support
+      // was inert text — a capability asserted in prose and absent from the
+      // code. The handoff has to actually land on the cited report, not just
+      // open the panel on whatever it defaults to.
+      row: "evidence handoff opens that report",
+      setup: () => screener(),
+      check: async () => {
+        const before = await evaluate(
+          `!!document.querySelector('[data-apollo-id="screener-evidence-gold-london-sweep"]')`,
+        );
+        if (!before) return [false, "no evidence control rendered on the supported cell"];
+        await click("screener-evidence-gold-london-sweep");
+        const r = await evaluate(`(() => {
+          const panel = document.querySelector('[data-apollo-id="conditional-rates"]');
+          if (!panel) return { onRates: false };
+          const pressed = [...document.querySelectorAll('button[data-apollo-id^="rates-report-"]')]
+            .find((b) => b.getAttribute('aria-pressed') === 'true');
+          return { onRates: true, selected: pressed?.getAttribute('data-apollo-id') ?? null };
+        })()`);
+        const ok = r.onRates && r.selected === "rates-report-gold-london-sweep";
+        return [ok, `landedOnRatesPanel=${r.onRates} selectedReport=${r.selected}`];
+      },
+    },
+    {
       // POSITIVE cross-panel agreement, not a refusal. This surface reads from
       // the library AND the rates panel, so it is the one most able to state a
       // setup's scope differently from the panel that owns it. The §15 scar:
