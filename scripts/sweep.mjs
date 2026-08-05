@@ -917,6 +917,36 @@ try {
       },
     },
     {
+      // Every saved run the user kept for this instrument gets a row. An
+      // earlier version keyed rows by strategy NAME and suppressed every later
+      // run sharing one, which silently dropped a save the user deliberately
+      // kept — §15's rule that a save must not evaporate, broken one surface
+      // over. Save the same strategy under a second profile and both must show.
+      row: "no saved run is dropped",
+      setup: async () => {
+        await load();
+        // Save the loaded run twice, under two different profiles: §15 treats
+        // those as two runs, so the screener must too.
+        await click("open-backtest");
+        await click("tab-trades-analysis");
+        await click("favourite-run");
+        await click("profile-thin");
+        await click("favourite-run");
+        await click("rail-screener");
+      },
+      check: async () => {
+        const r = await evaluate(`(() => {
+          const rows = [...document.querySelectorAll('[data-apollo-id="screener-matrix"] tbody tr')];
+          const scopes = rows.map((tr) => tr.querySelector('td')?.innerText.replace(/\\s+/g, ' ').trim());
+          const sweep = scopes.filter((s) => /Sweep and Engulf/i.test(s ?? ''));
+          return { total: rows.length, sweep, distinct: new Set(sweep).size };
+        })()`);
+        // Two saves of the same strategy => two rows, told apart by profile.
+        const ok = r.sweep.length === 2 && r.distinct === 2;
+        return [ok, `rows=${r.total} sameStrategyRows=${r.sweep.length} distinctScopeLines=${r.distinct}`];
+      },
+    },
+    {
       // The docs said a matched setup "links to" its evidence while the support
       // was inert text — a capability asserted in prose and absent from the
       // code. The handoff has to actually land on the cited report, not just

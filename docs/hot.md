@@ -20,8 +20,8 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Spec | `docs/UI-NEXT-INCREMENT.md` §18, recorded BEFORE code |
 | Card | `consumer.ui-setup-screener` — **active** |
 | plan-warden | ON PLAN WITH CORRECTIONS — five blocking, all applied |
-| Gates | sweep **40/40**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, **all seven parity sheets regenerated** |
-| Greptile | round 1 found **one P1, real, fixed** — the evidence handoff was inert |
+| Gates | sweep **41/41**, reflow PASS, palette 20/20, `tsc -b` clean, `build` clean, **all seven parity sheets regenerated** |
+| Greptile | rounds 1–2, **two P1s, both real, both fixed** — see below |
 
 §16 answered *"what usually happens after this setup?"*. It could not answer *"is that setup
 happening?"* — so the cockpit held evidence and no trigger. §18 splits the surface in two.
@@ -69,6 +69,14 @@ the observation.
 > feature. It is a real control now, and the row `evidence handoff opens that report` asserts the
 > panel lands on the CITED report; mutated, it lands on `rates-report-ib-breakout`, which is exactly
 > what the reviewer observed.
+
+> **Round 2: rows were keyed by strategy NAME, so a saved run was silently dropped.** Every later
+> run sharing a name was suppressed — and §15 itself made the run *profile* part of a saved run's
+> identity, so two saves of one strategy under different profiles are two runs. Dropping one from
+> the screener is §15's "a save must not evaporate" broken one surface over. Rows are keyed by run
+> now and carry their profile so same-named rows are told apart. Row `no saved run is dropped`
+> saves the same strategy twice and asserts both appear; mutated it reads
+> `sameStrategyRows=1 distinctScopeLines=1`.
 
 On
 screen the supported 1h matches render in accent and name their report; the unsupported 4h match
@@ -381,7 +389,7 @@ npx tsc -b                # clean
 npm run build             # clean
 node scripts/parity.mjs   # regenerates all seven parity sheets
 node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
-node scripts/sweep.mjs    # empty-state sweep, 40 rows, asserts and exits non-zero
+node scripts/sweep.mjs    # empty-state sweep, 41 rows, asserts and exits non-zero
 ```
 
 The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:

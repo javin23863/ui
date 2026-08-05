@@ -134,7 +134,7 @@ function Row({ row, onOpenEvidence }: { row: ScreenRow; onOpenEvidence: (id: str
         <div className="text-text-primary">{row.setup}</div>
         {/* The saved run's scope, stated. Nothing below re-scopes it. */}
         <div className="mt-0.5 text-[11px] text-text-muted">
-          history measured on {row.symbol} {row.capturedTimeframe}
+          history measured on {row.symbol} {row.capturedTimeframe} · {row.profile}
         </div>
       </td>
       {row.cells.map((c) => (

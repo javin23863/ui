@@ -62,6 +62,13 @@ export type ScreenRow = {
    * which column the historical support actually belongs to.
    */
   capturedTimeframe: string;
+  /**
+   * §15a made the run profile part of a saved run's IDENTITY: the same strategy
+   * on the same instrument and timeframe under a different profile is a
+   * different run with different trades. It is shown so two rows sharing a
+   * strategy name are told apart rather than one being dropped.
+   */
+  profile: string;
   cells: ScreenCell[];
 };
 
@@ -129,19 +136,21 @@ const NEVER_EVALUATED: Cell = {
  * constant.
  */
 export function screenRowsFor(symbol: string, runs: SavedRun[]): ScreenRow[] {
-  const seen = new Set<string>();
   const rows: ScreenRow[] = [];
   for (const r of runs) {
     // Archived runs are abandoned work (§15c) and must not supply live rows.
     if (r.archived || r.symbol !== symbol) continue;
-    if (seen.has(r.strategy)) continue;
-    seen.add(r.strategy);
+    // Keyed by RUN, never by strategy name. An earlier version suppressed every
+    // later run sharing a name, which silently dropped a saved run the user had
+    // deliberately kept — §15's own rule is that a save must not evaporate, and
+    // dropping it from the screener is the same evaporation one surface over.
     const obs = OBSERVATIONS[r.id] ?? {};
     rows.push({
       runId: r.id,
       setup: r.strategy,
       symbol: r.symbol,
       capturedTimeframe: r.timeframe,
+      profile: r.profile,
       cells: SCREEN_TIMEFRAMES.map((tf) => ({
         ...(obs[tf] ?? NEVER_EVALUATED),
         timeframe: tf,
