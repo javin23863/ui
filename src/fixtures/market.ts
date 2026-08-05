@@ -260,6 +260,19 @@ export const equityFor = (rows: typeof trades) => {
 
 export const dailyPnlFor = (rows: typeof trades) => rows.map((t) => ({ time: t.entryTime, value: t.net }));
 
+const day = (t: number) =>
+  new Date(t * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/**
+ * The span a set of rows actually covers. This was a hand-written string that
+ * said "Jun 4, 2023 - Jul 15, 2026" while the ledger under it ran from May 2026
+ * to Aug 2026, and it stayed on screen unchanged when a profile cut the run to
+ * eleven trades — a date range is an aggregate like any other, and a hand-typed
+ * one contradicts the ledger it claims to summarise.
+ */
+export const rangeLabelFor = (rows: typeof trades) =>
+  rows.length ? `${day(rows[0].entryTime)} – ${day(rows[rows.length - 1].exitTime)}` : "No trades";
+
 /** The full run as executed — what the dock and the chart pane show. */
 export const equity = equityFor(trades);
 
@@ -342,7 +355,7 @@ export const summary = {
   symbol: "XAUUSD",
   timeframe: "4h",
   strategy: "Sweep and Engulf Strategy",
-  rangeLabel: "Jun 4, 2023 – Jul 15, 2026",
+  rangeLabel: rangeLabelFor(trades),
   netProfit: all.netProfit,
   trades: all.trades,
   winRate: all.winRate,

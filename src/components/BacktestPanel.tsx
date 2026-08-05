@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Minimize2, Star } from "lucide-react";
 import { CategoryBars, DailyPnl, EquityCurve } from "./charts";
 import { AssetBadge, Card, cx, KpiStrip, Legend, Signed } from "../ui";
-import { dailyPnlFor, equityFor, metricsFor, type SideFilter, statsFor, summary, trades, weekdayPnlFor } from "../fixtures/market";
+import { dailyPnlFor, equityFor, metricsFor, rangeLabelFor, type SideFilter, statsFor, summary, trades, weekdayPnlFor } from "../fixtures/market";
 import { costsModelledFor, type Profile, presentedRowsFor } from "../runs";
 import TradesAnalysis from "./TradesAnalysis";
 import TradesLog from "./TradesLog";
@@ -68,7 +68,7 @@ export default function BacktestPanel({
         </span>
         <span className="flex h-7 items-center rounded-md bg-bg-panel px-2 text-[13px] text-text-muted">{summary.timeframe}</span>
         <h2 className="ml-1 text-[13px] font-semibold">Backtest Results</h2>
-        <span className="text-[12px] text-text-muted">{summary.rangeLabel}</span>
+        <span className="text-[12px] text-text-muted">{rangeLabelFor(runRows)}</span>
         <button
           data-apollo-id="favourite-run"
           aria-label={runSaved ? "Saved to library" : "Save run to library"}

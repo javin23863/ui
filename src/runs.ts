@@ -1,4 +1,4 @@
-import { asPresented, summary, pineSource, statsFor, trades } from "./fixtures/market";
+import { asPresented, summary, pineSource, rangeLabelFor, statsFor, trades } from "./fixtures/market";
 
 /**
  * The run model, and the ONE place the adequacy thresholds live.
@@ -160,14 +160,6 @@ export const SORTS = [
 
 export type SortId = (typeof SORTS)[number]["id"];
 
-const day = (t: number) =>
-  new Date(t * 1000).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-
 /**
  * Capture the run that is on screen.
  *
@@ -191,7 +183,7 @@ export function captureCurrentRun(profile: Profile, parentId: string | null = nu
     symbol: summary.symbol,
     timeframe: summary.timeframe,
     // The slice's own span, not the whole ledger's.
-    rangeLabel: rows.length ? `${day(rows[0].entryTime)} – ${day(rows[rows.length - 1].exitTime)}` : "No trades",
+    rangeLabel: rangeLabelFor(rows),
     strategy: summary.strategy,
     profile,
     source: pineSource,

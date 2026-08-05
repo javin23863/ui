@@ -550,8 +550,19 @@ try {
           );
           return d ? Number(d.children[1].textContent.replace(/[^0-9]/g, '')) : NaN;
         })()`);
-        const ok = analysis === 11 && log === 11 && perf === 11;
-        return [ok, `analysis=${analysis} log=${log} performance=${perf} (thin profile is 11 trades)`];
+        // The header's date range is an aggregate of the same rows, so it must
+        // move with them. It was a hand-written constant that stayed put.
+        const header = await evaluate(`(() => {
+          const h = [...document.querySelectorAll('h2')].find((x) => /Backtest Results/.test(x.textContent));
+          return h?.nextElementSibling?.textContent?.trim() ?? null;
+        })()`);
+        const counts = analysis === 11 && log === 11 && perf === 11;
+        // 11 trades cannot span the full ledger's three years.
+        const headerMoved = !!header && !/2023/.test(header);
+        return [
+          counts && headerMoved,
+          `analysis=${analysis} log=${log} performance=${perf} (thin is 11) | header range="${header}" followsRun=${headerMoved}`,
+        ];
       },
     },
     {

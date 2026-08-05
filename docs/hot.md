@@ -21,7 +21,7 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | Card | `consumer.ui-strategy-library` — **active** |
 | plan-warden | ON PLAN WITH CORRECTIONS, all four applied (see below) |
 | Gates | sweep **20/20**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
-| Greptile | rounds 1–6, **seven P1s, all real, all fixed**; one finding re-posted 4× is a FALSE POSITIVE — see below |
+| Greptile | rounds 1–7, **eight P1s, all real, all fixed**; one finding re-posted 5× is a FALSE POSITIVE — see below |
 
 Reachable from the rail's `History` button. Star in the backtest header saves the run **as shown**,
 so an entry's numbers and its adequacy chips come from the same profile the reader is looking at.
@@ -137,7 +137,17 @@ running sum of the `Net` column beside it and landed short by exactly the modell
 recomputes `cum` too. The `no-costs IS/OOS sums to the run` row also asserts the last `Cum. net`
 equals the run's net; mutated it reads `last Cum. net=1999.7 → DISAGREE` against a net of 2587.7.
 
-> **FALSE POSITIVE, re-posted in rounds 3, 4, 5 and 6 — do not "fix" it again.** `runs.ts` *No-costs
+**Round 7: the date range was a hand-written constant.** The header rendered
+`summary.rangeLabel` — the literal string `Jun 4, 2023 – Jul 15, 2026` — which matched neither the
+`thin` profile's eleven trades nor, as it turned out, **the full ledger either**, whose trades run
+May 2026 to Aug 2026. `rangeLabelFor(rows)` now derives it, `summary.rangeLabel` is derived from the
+full ledger, and the header reads `rangeLabelFor(runRows)`. **A date range is an aggregate like any
+other, and a hand-typed one contradicts the ledger it claims to summarise** — the same finding the
+fixtures already carried a comment about, in the one aggregate nobody thought of as a number. This
+one *does* move `p5-backtest`, and it moves it TOWARD the reference: ours now reads
+`May 6, 2026 – Aug 7, 2026` against the reference's `May 5 – Jul 14, 2026`.
+
+> **FALSE POSITIVE, re-posted in rounds 3, 4, 5, 6 and 7 — do not "fix" it again.** `runs.ts` *No-costs
 > warning uses deducted returns*, claiming `factsForProfile` derives `top3Share` from cost-deducted
 > `t.net`. It did, and it was fixed at `43c60e2`; `factsForProfile` reads `presentedRowsFor(profile)`
 > and there is no `rowsFor` call left in it. Verified in a browser three times, not by reading the
