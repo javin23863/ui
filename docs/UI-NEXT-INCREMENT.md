@@ -1,7 +1,7 @@
 # TraderCockpit UI — next increment (post-P6)
 
-**Status:** filed 2026-08-05 from operator direction. **§15 is BUILT** on `feat/strategy-library`
-(see `hot.md`); §16 and §17 are still plan only.
+**Status:** filed 2026-08-05 from operator direction. **§15 is BUILT and MERGED to `main`** (PR #4,
+see `hot.md`); §16 and §17 are still plan only.
 **Why this document exists:** `UI-PARITY-SPEC.md` ends at P6 and defines no P7. plan-warden ruled
 that once P6 is signed off the plan is exhausted and the next increment must come from the operator
 rather than being picked. It now has. This is that increment.
@@ -35,7 +35,7 @@ be a tuning note, not a work item.
 
 ## §15. Strategy Library — saving the good ones
 
-> **BUILT 2026-08-05** on `feat/strategy-library`. Three things the build settled that this plan
+> **BUILT and MERGED 2026-08-05** (PR #4). Three things the build settled that this plan
 > did not anticipate:
 >
 > 1. **"The same adequacy chips Trades Analysis already computes" was true of two of the five.**

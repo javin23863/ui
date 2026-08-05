@@ -12,13 +12,13 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
-## ▶ §15 Strategy Library — on `feat/strategy-library`, not yet merged
+## §15 Strategy Library — MERGED TO MAIN 2026-08-05
 
 | | |
 |---|---|
-| Branch | `feat/strategy-library`, worktree `C:\tmp\ui-strategy-library` |
+| PR #4 | `feat/strategy-library` → **MERGED** at `03e548d`. Operator-authorized over a `Greptile Review` check reading **fail** on a finding re-posted identically in rounds 3–7 and verified fixed at `43c60e2`. |
 | Spec | `docs/UI-NEXT-INCREMENT.md` §15 |
-| Card | `consumer.ui-strategy-library` — **active** |
+| Card | `consumer.ui-strategy-library` — **verify**; operator moves it to done |
 | plan-warden | ON PLAN WITH CORRECTIONS, all four applied (see below) |
 | Gates | sweep **20/20**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
 | Greptile | rounds 1–7, **eight P1s, all real, all fixed**; one finding re-posted 5× is a FALSE POSITIVE — see below |
