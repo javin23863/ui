@@ -11,8 +11,9 @@ that covers what you are about to touch. Nothing below needs the previous sessio
 Quant). It is **UI only** — there is no LLM, no Pine compilation, no market data and no backtest
 engine, deliberately. Everything renders from one seeded fixture.
 
-The parity plan is **finished**: P0–P6, all merged to `main`, all gates green. The next increment is
-**specced but not built**.
+The parity plan is **finished**: P0–P6, all merged to `main`, all gates green. Of the next
+increment, **§15 Strategy Library is built** on `feat/strategy-library` (unmerged); §16 and §17 are
+specced but not built.
 
 ```bash
 git clone https://github.com/javin23863/ui && cd ui
@@ -47,7 +48,7 @@ npm i && npm run dev      # → http://localhost:5199
 |---|---|
 | `consumer.ui-parity-spec` | **verify** — operator moves to done |
 | `consumer.ui-p6-gates` | **active** — PR #3 merged, awaiting the same |
-| `consumer.ui-strategy-library` | **ready** — §15 |
+| `consumer.ui-strategy-library` | **active** — §15 built on `feat/strategy-library` |
 | `consumer.ui-screeners` | **ready** — §16 |
 | `consumer.ui-indicator-representation` | **ready** — §17 |
 
@@ -69,7 +70,7 @@ The two browser gates need `npm run dev` on 5199 **and** a Chrome on CDP 9333:
 ```bash
 chrome --remote-debugging-port=9333 --user-data-dir=<scratch> --window-size=1920,1080
 node scripts/reflow.mjs   # 1440 + 1280, asserts, exits non-zero
-node scripts/sweep.mjs    # 10-row empty-state sweep, asserts, exits non-zero
+node scripts/sweep.mjs    # 15-row empty-state sweep, asserts, exits non-zero
 node scripts/parity.mjs   # regenerates the seven side-by-side sheets
 ```
 

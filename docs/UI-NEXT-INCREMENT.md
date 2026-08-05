@@ -1,6 +1,7 @@
 # TraderCockpit UI — next increment (post-P6)
 
-**Status:** plan. No implementation yet. Filed 2026-08-05 from operator direction.
+**Status:** filed 2026-08-05 from operator direction. **§15 is BUILT** on `feat/strategy-library`
+(see `hot.md`); §16 and §17 are still plan only.
 **Why this document exists:** `UI-PARITY-SPEC.md` ends at P6 and defines no P7. plan-warden ruled
 that once P6 is signed off the plan is exhausted and the next increment must come from the operator
 rather than being picked. It now has. This is that increment.
@@ -33,6 +34,20 @@ be a tuning note, not a work item.
 ---
 
 ## §15. Strategy Library — saving the good ones
+
+> **BUILT 2026-08-05** on `feat/strategy-library`. Three things the build settled that this plan
+> did not anticipate:
+>
+> 1. **"The same adequacy chips Trades Analysis already computes" was true of two of the five.**
+>    `Thin sample` and `Sparse` were chips; Top-3 concentration was a coloured KPI column, and
+>    `Costs not modelled` / `No holdout` were full-card refusal messages. All five now come from one
+>    call in `src/runs.ts`, keyed on `RunFacts` rather than on a run profile, so a live panel and a
+>    saved card cannot reach different conclusions about the same run.
+> 2. **A holdout needs three states.** Declared-but-empty is not the same claim as never-declared.
+> 3. **There is no "open this run" action.** §15a says a save must *capture* the context needed to
+>    re-open a run; it does not say the action exists, and implementing it against data we do not
+>    have would have re-created the label-without-its-data defect. The saved source is displayed
+>    instead, which is what makes the capture checkable.
 
 The reference has `Share chat` and a star icon and nothing behind either. This is ours.
 

@@ -12,6 +12,47 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 
 ---
 
+## ▶ §15 Strategy Library — on `feat/strategy-library`, not yet merged
+
+| | |
+|---|---|
+| Branch | `feat/strategy-library`, worktree `C:\tmp\ui-strategy-library` |
+| Spec | `docs/UI-NEXT-INCREMENT.md` §15 |
+| Card | `consumer.ui-strategy-library` — **active** |
+| plan-warden | ON PLAN WITH CORRECTIONS, all four applied (see below) |
+| Gates | sweep **15/15**, palette 20/20, `tsc -b` clean, `build` clean, parity sheets regenerated |
+
+Reachable from the rail's `History` button. Star in the backtest header saves the run **as shown**,
+so an entry's numbers and its adequacy chips come from the same profile the reader is looking at.
+
+**The one thing to carry forward:** the five §15b adequacy signals now live in `src/runs.ts` and
+nowhere else. Only two of them were ever chips — `Thin sample` and `Sparse`. Top-3 concentration was
+a coloured KPI column and `Costs not modelled` / `No holdout` were full-card refusal messages, so
+"reuse the chips Trades Analysis already computes" was true of two of five and the other three would
+have been re-derived by hand. `RunFacts` is the input rather than `Profile`, because a live run
+derives its facts from the fixture while a saved run carries the facts it was saved with — same
+thresholds, two fact sources. **`holdout` is three states, not a boolean**: declared-but-empty is a
+different claim from never-declared and the panel already said so in two different sentences.
+
+There is **no "open this run" action**, deliberately. Re-opening a saved run needs a data path this
+build does not have, and a button that quietly returned to the loaded fixture under another run's
+name is the label-without-its-data defect. The saved source is shown instead.
+
+Nothing persists. The panel says so on screen — §15's rule is that a save must not evaporate
+*silently*, not that it must not evaporate.
+
+**The seeded library excludes the currently-loaded run on purpose.** The star is captured by the
+`p5-backtest` parity sheet; seeding the loaded run rendered it already-saved in that frame, which
+would have been a parity divergence introduced by a demo fixture rather than by a decision.
+
+**Proven by mutation 2026-08-05**, all five new rows at once: seed unconditionally → `cards=5`;
+flip `fixtureAvailable` → `rendersNumbersAnyway=true`; default sort to `return` → `ordersDiffer=false`;
+gut the notice → row fails on its text; drop the archived filter → `inActiveView=true`. Exactly the
+five new rows flipped and the ten pre-existing rows stayed green, which is what makes it a valid
+mutation rather than a broken app failing everything.
+
+---
+
 ## UI build — MERGED TO MAIN 2026-08-05
 
 | | |
@@ -47,7 +88,7 @@ npx tsc -b                # clean
 npm run build             # clean
 node scripts/parity.mjs   # regenerates all seven parity sheets
 node scripts/reflow.mjs   # P6 reflow gate, 1440 + 1280, asserts and exits non-zero
-node scripts/sweep.mjs    # P6 empty-state sweep, 10 rows, asserts and exits non-zero
+node scripts/sweep.mjs    # empty-state sweep, 15 rows, asserts and exits non-zero
 ```
 
 The last three need `npm run dev` on 5199 AND a Chrome on CDP 9333:
@@ -65,6 +106,13 @@ it before merging.
 > outlive the process. A killed run leaves the tab with `SpeechRecognition` deleted and
 > `getUserMedia` stubbed, and every later load renders BLANK with no exception — indistinguishable
 > from a broken dev server.
+>
+> **A run that FAILS a row can poison the next run the same way** (observed 2026-08-05). The
+> `finally` block cannot complete when the process dies on an unsettled top-level await, so the
+> handlers are never removed. The next run then hangs at `await click("mic")` and reports
+> `Detected unsettled top-level await` — which reads exactly like a bug in whatever you just
+> changed, and is not. **Restart Chrome on a fresh `--user-data-dir` after any failed sweep**
+> before believing its next result.
 
 Three fixture invariants also run on every dev boot (`src/fixtures/market.ts`): weekday total equals
 net profit, gross profit minus gross loss equals net profit, wins plus losses equals the trade
@@ -153,5 +201,14 @@ Gaps 3–6 remain genuinely open.
 
 ### Graphs
 
-No code graph for this repo yet. Build one when the branches land on `main`; there is now code
-worth indexing. The ops-vault graph was current as of this wave's `vault_sync`.
+**A code graph exists**: `~/.graphify/ui/graphify-out/graph.json` — 353 nodes / 485 edges / 28
+communities, built 2026-08-05. Query it before grepping:
+
+```
+graphify query "<question>" --graph C:/Users/MSI/.graphify/ui/graphify-out/graph.json
+```
+
+It indexes `src/`, `scripts/` and the spec documents together, so it answers "which panel computes
+this" in one hop. It does **not** index the ops vault — that is a separate graph and returns a
+confident nothing for code questions. This entry previously said no graph existed; it did, and the
+line was already stale when it was read.
