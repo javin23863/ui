@@ -18,7 +18,8 @@ Facts that rot by construction do not belong in a hand-maintained doc. Run
 | `main` | carries **everything**: spec, `src/`, `scripts/`, `docs/parity/`, `docs/reference/` |
 | PR #1 | `docs/ui-parity-spec` → MERGED |
 | PR #2 | `feat/ui-build` → **MERGED** at `7fefff7`, Greptile 5/5 with zero findings at that head |
-| Board card | `consumer.ui-parity-spec` under `cap.consumer-shell`, **verify** — operator moves to done |
+| PR #3 | `feat/p6-gates` → **MERGED** at `ce0a457`. Zero findings at head; Confidence 4/5 against a repo-configured 5/5 bar, so the check read "fail" while the review itself succeeded. **Operator ruled 4/5-with-zero-findings a pass.** |
+| Board cards | `consumer.ui-parity-spec` **verify** · `consumer.ui-p6-gates` **active** — operator moves both to done |
 
 `npm i && npm run dev` → http://localhost:5199.
 
@@ -68,8 +69,13 @@ count. **Proven by mutation 2026-08-05, not just written** — dropping Wednesda
 derivation throws `weekday P&L sums to -1927.15, net profit is 1999.7` and the app refuses to
 render. An assertion nobody has watched fail is not yet a gate.
 
-`docs/parity/` holds the seven side-by-side sheets — **also `feat/ui-build` only**. All seven pass
-on §11's terms.
+`docs/parity/` holds the seven side-by-side sheets, `docs/reflow/` the ten reflow captures and
+`docs/sweep/` the ten empty-state captures. All on `main`. All pass on §11's terms.
+
+> **A `Greptile Review` check can read "fail" while the review passed.** The check reflects a
+> confidence threshold, not a verdict — read `.output.summary` on the check run
+> (`gh api repos/javin23863/ui/commits/<sha>/check-runs`) before treating it as a finding. Zero
+> inline comments anchored to the head is the real signal.
 
 ### Traps already bought — do not re-derive these
 
